@@ -1,0 +1,64 @@
+erDiagram
+    bio_researchers ||--o{ bio_sightings : records
+    bio_species ||--o{ bio_sightings : observed_in
+    bio_sites ||--o{ bio_sightings : located_at
+    bio_researchers ||--o{ bio_sighting_revisions : changes
+    bio_sightings ||--o{ bio_sighting_revisions : preserves
+    bio_researchers ||--o{ bio_refresh_tokens : owns
+    bio_researchers ||--o{ bio_copilot_usage : asks
+    bio_copilot_usage ||--o{ bio_copilot_citations : cites
+    bio_sightings ||--o{ bio_copilot_citations : source_for
+
+    bio_researchers {
+        UUID bio_researcher_id PK
+        CITEXT bio_email UK
+        SMALLINT bio_accreditation_level
+        BOOLEAN bio_is_active
+    }
+    bio_species {
+        UUID bio_species_id PK
+        VARCHAR bio_scientific_name UK
+        VARCHAR bio_iucn_category
+    }
+    bio_sites {
+        UUID bio_site_id PK
+        VARCHAR bio_site_name
+        VARCHAR bio_region
+    }
+    bio_sightings {
+        UUID bio_sighting_id PK
+        VARCHAR bio_observation_reference UK
+        UUID bio_researcher_id FK
+        UUID bio_species_id FK
+        UUID bio_site_id FK
+        TIMESTAMPTZ bio_observed_at
+        SMALLINT bio_classification_level
+        VECTOR bio_field_notes_embedding
+        BOOLEAN bio_is_voided
+    }
+    bio_sighting_revisions {
+        UUID bio_sighting_revision_id PK
+        UUID bio_sighting_id FK
+        UUID bio_changed_by_researcher_id FK
+        INTEGER bio_revision_number
+        VARCHAR bio_change_type
+    }
+    bio_refresh_tokens {
+        UUID bio_refresh_token_id PK
+        UUID bio_researcher_id FK
+        UUID bio_token_family_id
+        UUID bio_parent_refresh_token_id FK
+        VARCHAR bio_token_hash UK
+    }
+    bio_copilot_usage {
+        UUID bio_copilot_usage_id PK
+        UUID bio_researcher_id FK
+        VARCHAR bio_system_prompt_version
+        VARCHAR bio_model_name
+    }
+    bio_copilot_citations {
+        UUID bio_copilot_citation_id PK
+        UUID bio_copilot_usage_id FK
+        UUID bio_sighting_id FK
+        SMALLINT bio_rank
+    }

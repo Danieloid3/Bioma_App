@@ -1,0 +1,91 @@
+name: bioma
+
+services:
+  db:
+    image: pgvector/pgvector:0.8.6-pg16-bookworm
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - "${DB_PORT:-55432}:5432"
+    volumes:
+      - bioma_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  migrator:
+    image: postgres:16-bookworm
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      BIO_APP_DB_PASSWORD: ${BIO_APP_DB_PASSWORD}
+    volumes:
+      - ./database:/migrations:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["sh", "/migrations/run-migrations.sh"]
+    restart: "no"
+
+  api:
+    image: bioma-local-api:dev
+    build:
+      context: ./backend
+    environment:
+      DATABASE_URL: postgresql://${BIO_APP_DB_USER}:${BIO_APP_DB_PASSWORD}@db:5432/${POSTGRES_DB}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      ACCESS_TOKEN_MINUTES: ${ACCESS_TOKEN_MINUTES:-15}
+      REFRESH_TOKEN_DAYS: ${REFRESH_TOKEN_DAYS:-14}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      BIO_LLM_PROVIDER: ${BIO_LLM_PROVIDER:-openai}
+      BIO_LLM_MODEL: ${BIO_LLM_MODEL:-}
+      BIO_EMBEDDING_MODEL: ${BIO_EMBEDDING_MODEL:-}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5174}
+    ports:
+      - "${API_PORT:-8001}:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  web:
+    image: bioma-local-web:dev
+    build:
+      context: ./frontend
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8001}
+    ports:
+      - "${WEB_PORT:-5174}:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      api:
+        condition: service_started
+    command: ["sh", "-c", "npm install && npm run dev -- --host 0.0.0.0"]
+
+  database-tests:
+    image: postgres:16-bookworm
+    profiles: ["test"]
+    environment:
+      DATABASE_ADMIN_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      DATABASE_APP_URL: postgresql://${BIO_APP_DB_USER}:${BIO_APP_DB_PASSWORD}@db:5432/${POSTGRES_DB}
+    volumes:
+      - ./database:/migrations:ro
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+    command: ["sh", "/migrations/tests/run-security-tests.sh"]
+
+volumes:
+  bioma_postgres_data:
+  frontend_node_modules:
