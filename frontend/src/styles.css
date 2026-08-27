@@ -73,20 +73,9 @@
 }
 
 @media (min-width: 901px) {
-  .login-hero {
-    height: calc(100vh - 1.5rem);
-    min-height: calc(100vh - 1.5rem);
-    margin-block: .75rem;
-    align-self: center;
-  }
-
-  .login-hero-content {
-    min-height: 100%;
-  }
-
   .hero-center-art {
     position: absolute;
-    top: 50%;
+    top: 52vh;
     left: 0;
     right: 0;
     transform: translateY(-50%);
