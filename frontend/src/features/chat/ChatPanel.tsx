@@ -36,6 +36,7 @@ type Citation = {
   type: string;
   reference: string;
   id?: string;
+  label?: string;
 };
 
 type Channel = {
@@ -112,7 +113,7 @@ function formatInlineContent(
           >
             <span className={styles.citationIcon}><Leaf /></span>
             <span className={styles.citationText}>
-              {source.reference.toUpperCase()}
+              {source.label || source.reference.toUpperCase()}
             </span>
           </button>
         );
@@ -966,7 +967,7 @@ export function ChatPanel({
                             }}
                             title={`Abrir registro ${c.reference}`}
                           >
-                            <strong>{c.reference}</strong>
+                            <strong>{c.label || c.reference}</strong>
                           </button>
                         ))}
                       </div>
