@@ -9,7 +9,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.application.use_cases.answer_copilot_question import AnswerCopilotQuestion
-from app.domain.models import Actor
+from app.domain.models import Actor, ConversationMessage
 from app.infrastructure.ai.factory import build_ai_gateway
 from app.infrastructure.chat_events import CHAT_EVENTS_CHANNEL, ChatEvent, RedisChatEventPublisher
 from app.infrastructure.config import Settings, get_settings
@@ -213,14 +213,29 @@ async def ask_channel_copilot(
             return await PostgresCopilotAuditRepository(connection).record(**kwargs)
 
     async with database.actor_transaction(actor.researcher_id) as connection:
+        repository = PostgresChatRepository(connection)
         chat_prompt = await connection.fetchrow("SELECT * FROM bio_fn_get_active_system_prompt('chat')")
         greeting_prompt = await connection.fetchrow("SELECT * FROM bio_fn_get_active_system_prompt('greeting')")
+        # El historial conversacional se recupera bajo RLS. Se excluye la invocación
+        # actual porque se envía como pregunta explícita al proveedor.
+        recent_messages = await repository.history(channel_id, None, None, 16)
+
+    current_message = f"@copilot {payload.question}".strip().casefold()
+    conversation_history = [
+        ConversationMessage(
+            role="assistant" if item.sender_role == "copilot" else "user",
+            content=item.message_text,
+        )
+        for item in reversed(recent_messages)
+        if item.message_text.strip().casefold() != current_message
+    ]
 
     answer = await AnswerCopilotQuestion(
         embeddings=embeddings, copilot=copilot, context=retrieve, audit=audit, catalog=catalog
     ).execute(
         actor=actor, question=payload.question, system_prompt=chat_prompt["prompt_text"],
         system_prompt_version=chat_prompt["version_key"], greeting_prompt=greeting_prompt["prompt_text"],
+        history=conversation_history,
     )
 
     sources = [{

@@ -40,6 +40,7 @@ You have access to:
 Guidelines:
 - Answer naturally, warmly, factually and professionally in Spanish.
 - Treat the conversation as a collaboration with field researchers: greet and acknowledge naturally, use the researcher's wording when helpful, and keep answers concise unless a fuller explanation is requested.
+- Use the recent channel conversation as first-class context. Distinguish what a researcher said from verified field evidence; conversation context can clarify the question but does not authorize new sightings or citations.
 - Never expose implementation details or authorization mechanisms. Do not say "RLS", "permisos", "intersección", "registros ocultos", "no compartido" or similar language that could make the researcher infer confidential records.
 - When asked what sightings, species, or records the channel participants have in common or can see together, present the records supplied in your context directly in a clear, collegial tone.
 - Discretion & Natural Tone: If the available context does not contain a sighting that confirms the requested animal or taxon, say it in friendly everyday Spanish: "No encuentro un avistamiento disponible que confirme ese dato por ahora". Do not claim that no one has ever seen it and do not suggest that another participant can see more. Offer to check the catalog or refine the search by site, date, or species.
@@ -153,7 +154,11 @@ class AnswerCopilotQuestion:
         if self.catalog is not None:
             catalog_items = await self.catalog()
 
-        if sources or catalog_items:
+        # A channel's RLS-filtered conversation is valid context even when the
+        # semantic sighting search has no matching result. Do not discard it and
+        # fall back to a robotic denial; the provider can ask for clarification
+        # while still being forbidden to invent evidence.
+        if sources or catalog_items or history:
             answer = await self.copilot.answer(
                 actor_name=actor.full_name,
                 actor_role=actor.role_title,

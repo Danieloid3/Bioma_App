@@ -14,6 +14,7 @@ Esta carpeta reúne los artefactos de la solución para revisión y evaluación.
 - `compose.yaml` y `.env.example`: ejecución reproducible sin secretos.
 - `evidencias/`: resultados resumidos de las validaciones ejecutadas.
 - `backend/app/infrastructure/chat_events.py` y `backend/tests/test_api_chat_realtime_http.py`: tiempo real SSE autenticado, Redis Pub/Sub y prueba de aislamiento entre miembros y no miembros.
+- El `CopilotPanel` usa claves de caché acotadas al investigador autenticado y el backend incorpora historial conversacional protegido por RLS.
 
 ## Ejecución
 

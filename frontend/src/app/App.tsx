@@ -172,7 +172,7 @@ function AppView({ view, api, researcher, onLogout, onNavigate, onOpenSighting }
   if (view === "chat") return <ChatPanel api={api} researcher={researcher} onOpenSighting={onOpenSighting} />;
   if (view === "admin") return <PromptAdminPanel api={api} />;
 
-  if (view === "copilot") return <div className="single-column"><CopilotPanel api={api} onOpenSighting={onOpenSighting} /></div>;
+  if (view === "copilot") return <div className="single-column"><CopilotPanel api={api} researcherId={researcher.researcher_id} onOpenSighting={onOpenSighting} /></div>;
   if (view === "profile") return <div className="single-column"><ProfilePanel api={api} researcher={researcher} onLogout={onLogout} onNavigate={onNavigate} /></div>;
   if (view === "reports") return <ReportsPanel api={api} onNavigate={onNavigate} />;
   return <DashboardPanel api={api} onNavigate={onNavigate} />;

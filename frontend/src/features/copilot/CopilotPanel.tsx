@@ -23,7 +23,7 @@ function createMessageId() {
   return crypto.randomUUID();
 }
 
-export function CopilotPanel({ api, onOpenSighting }: { api: ApiClient; onOpenSighting: (sightingId: string) => void }) {
+export function CopilotPanel({ api, researcherId, onOpenSighting }: { api: ApiClient; researcherId: string; onOpenSighting: (sightingId: string) => void }) {
   const { i18n, t } = useTranslation();
   const [question, setQuestion] = useState("");
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -32,9 +32,16 @@ export function CopilotPanel({ api, onOpenSighting }: { api: ApiClient; onOpenSi
   const [conversationToDelete, setConversationToDelete] = useState<CopilotConversationItem | null>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+  const queryScope = ["copilot", researcherId] as const;
+
+  // Nunca reutilizar conversación o estado local al cambiar de investigador.
+  useEffect(() => {
+    setActiveConversationId(null);
+    setPendingUserMessage(null);
+  }, [researcherId]);
 
   const conversationsQuery = useQuery({
-    queryKey: ["copilot-conversations"],
+    queryKey: [...queryScope, "conversations"],
     queryFn: () => api.get<CopilotConversationListResponse>("/v1/copilot/conversations"),
   });
 
@@ -46,7 +53,7 @@ export function CopilotPanel({ api, onOpenSighting }: { api: ApiClient; onOpenSi
   }, [conversationsQuery.data?.items, activeConversationId]);
 
   const messagesQuery = useQuery({
-    queryKey: ["copilot-messages", activeConversationId],
+    queryKey: [...queryScope, "messages", activeConversationId],
     queryFn: () =>
       activeConversationId
         ? api.get<CopilotMessageListResponse>(`/v1/copilot/conversations/${activeConversationId}/messages`)
@@ -55,7 +62,7 @@ export function CopilotPanel({ api, onOpenSighting }: { api: ApiClient; onOpenSi
   });
 
   const usage = useQuery({
-    queryKey: ["copilot-usage"],
+    queryKey: [...queryScope, "usage"],
     queryFn: () => api.get<CopilotUsageResponse>("/v1/copilot/usage"),
   });
 
@@ -69,7 +76,7 @@ export function CopilotPanel({ api, onOpenSighting }: { api: ApiClient; onOpenSi
       setActiveConversationId(newConv.conversation_id);
       setPendingUserMessage(null);
       setQuestion("");
-      queryClient.setQueryData<CopilotConversationListResponse>(["copilot-conversations"], (old) => {
+      queryClient.setQueryData<CopilotConversationListResponse>([...queryScope, "conversations"], (old) => {
         if (!old) return { items: [newConv] };
         return { items: [newConv, ...old.items.filter((c) => c.conversation_id !== newConv.conversation_id)] };
       });
@@ -86,16 +93,16 @@ export function CopilotPanel({ api, onOpenSighting }: { api: ApiClient; onOpenSi
       setPendingUserMessage(null);
       if (data.conversation_id) {
         setActiveConversationId(data.conversation_id);
-        void queryClient.invalidateQueries({ queryKey: ["copilot-messages", data.conversation_id] });
+        void queryClient.invalidateQueries({ queryKey: [...queryScope, "messages", data.conversation_id] });
       }
-      void queryClient.invalidateQueries({ queryKey: ["copilot-conversations"] });
-      void queryClient.invalidateQueries({ queryKey: ["copilot-usage"] });
+      void queryClient.invalidateQueries({ queryKey: [...queryScope, "conversations"] });
+      void queryClient.invalidateQueries({ queryKey: [...queryScope, "usage"] });
     },
     onError: (error) => {
       setPendingUserMessage(null);
       const text = error instanceof ApiError ? error.message : t("errors.network");
       void queryClient.setQueryData<CopilotMessageListResponse>(
-        ["copilot-messages", activeConversationId],
+        [...queryScope, "messages", activeConversationId],
         (old) => {
           const items = old?.items ?? [];
           return {
@@ -122,11 +129,11 @@ export function CopilotPanel({ api, onOpenSighting }: { api: ApiClient; onOpenSi
       return convId;
     },
     onMutate: async (deletedId) => {
-      await queryClient.cancelQueries({ queryKey: ["copilot-conversations"] });
-      const previous = queryClient.getQueryData<CopilotConversationListResponse>(["copilot-conversations"]);
+      await queryClient.cancelQueries({ queryKey: [...queryScope, "conversations"] });
+      const previous = queryClient.getQueryData<CopilotConversationListResponse>([...queryScope, "conversations"]);
       
       const updatedItems = (previous?.items ?? []).filter((c) => c.conversation_id !== deletedId);
-      queryClient.setQueryData<CopilotConversationListResponse>(["copilot-conversations"], {
+      queryClient.setQueryData<CopilotConversationListResponse>([...queryScope, "conversations"], {
         items: updatedItems,
       });
 
@@ -143,11 +150,11 @@ export function CopilotPanel({ api, onOpenSighting }: { api: ApiClient; onOpenSi
     onError: (err, _, context) => {
       console.error("Error deleting conversation:", err);
       if (context?.previous) {
-        queryClient.setQueryData(["copilot-conversations"], context.previous);
+        queryClient.setQueryData([...queryScope, "conversations"], context.previous);
       }
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["copilot-conversations"] });
+      void queryClient.invalidateQueries({ queryKey: [...queryScope, "conversations"] });
     },
   });
 

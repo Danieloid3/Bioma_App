@@ -59,6 +59,22 @@ class LocalAiGateway:
         history: Sequence[ConversationMessage] = (),
         catalog_knowledge: Sequence[CatalogKnowledgeItem] = (),
     ) -> CopilotAnswer:
+        if not sources and history:
+            latest = next((message for message in reversed(history) if message.role == "user"), None)
+            detail = f' Recuerdo que se comentó: “{latest.content}”.' if latest else ""
+            text = (
+                "Sí, tengo presente el contexto de esta conversación, aunque no encontré un "
+                f"avistamiento verificable que lo confirme todavía.{detail} "
+                "Si quieres, puedo ayudarte a precisar la especie, el sitio o la fecha."
+            )
+            return CopilotAnswer(
+                text=text,
+                sources=(),
+                model_name=self.model_name,
+                input_tokens=len(question.split()),
+                output_tokens=len(text.split()),
+            )
+
         if not sources:
             return CopilotAnswer(
                 text="No dispongo de contexto autorizado suficiente para responder esa consulta.",
