@@ -402,13 +402,48 @@ class PostgresChatRepository:
         rows = await self._connection.fetch(
             "SELECT * FROM bio_fn_chat_history($1, $2, $3, $4)", channel_id, cursor_created_at, cursor_message_id, limit
         )
+        # Citation labels are resolved under the same actor/RLS connection. A
+        # citation that is no longer visible cannot be enriched or exposed.
+        citation_ids = {
+            UUID(str(citation["id"]))
+            for row in rows
+            for citation in (json.loads(row["citations"]) if isinstance(row["citations"], str) else (row["citations"] or ()))
+            if citation.get("type") == "sighting" and citation.get("id")
+        }
+        labels: dict[UUID, str] = {}
+        if citation_ids:
+            label_rows = await self._connection.fetch(
+                """
+                SELECT sighting.bio_sighting_id, species.bio_common_name
+                FROM bio_sightings AS sighting
+                JOIN bio_species AS species ON species.bio_species_id = sighting.bio_species_id
+                WHERE sighting.bio_sighting_id = ANY($1::uuid[])
+                """,
+                list(citation_ids),
+            )
+            labels = {row["bio_sighting_id"]: row["bio_common_name"] for row in label_rows}
+
+        def enrich_citations(raw: object) -> tuple[dict[str, str], ...]:
+            parsed = json.loads(raw) if isinstance(raw, str) else (raw or ())
+            enriched: list[dict[str, str]] = []
+            for citation in parsed:
+                item = dict(citation)
+                if item.get("type") == "sighting" and item.get("id"):
+                    try:
+                        if label := labels.get(UUID(str(item["id"]))):
+                            item["label"] = label
+                    except ValueError:
+                        continue
+                enriched.append(item)
+            return tuple(enriched)
+
         return [
             ChatMessageItem(
                 message_id=row["message_id"], channel_id=row["channel_id"], author_id=row["author_id"],
                 author_name=row["author_name"], message_text=row["message_text"],
                 sender_role=row.get("sender_role", "user"), is_edited=row.get("is_edited", False),
                 is_deleted=row.get("is_deleted", False), created_at=row["created_at"], read_count=row.get("read_count", 0),
-                citations=tuple(json.loads(row["citations"]) if isinstance(row["citations"], str) else (row["citations"] or ())),
+                citations=enrich_citations(row["citations"]),
             ) for row in rows
 
         ]

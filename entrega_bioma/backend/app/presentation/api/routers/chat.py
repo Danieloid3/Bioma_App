@@ -237,10 +237,18 @@ async def ask_channel_copilot(
         if item.message_text.strip().casefold() != current_message
     ]
 
+    safe_chat_prompt = (
+        f"{chat_prompt['prompt_text']}\n\n"
+        "Regla adicional de conversación: usa los mensajes recientes para entender el contexto. "
+        "No atribuyas un animal, especie o hecho a un avistamiento si la fuente no lo respalda "
+        "de forma directa. Si una fuente RAG es irrelevante o contradice el mensaje conversacional, "
+        "ignórala y no la cites. Una referencia solo puede aparecer junto al dato exacto que demuestra."
+    )
+
     answer = await AnswerCopilotQuestion(
         embeddings=embeddings, copilot=copilot, context=retrieve, audit=audit, catalog=catalog
     ).execute(
-        actor=actor, question=payload.question, system_prompt=chat_prompt["prompt_text"],
+        actor=actor, question=payload.question, system_prompt=safe_chat_prompt,
         system_prompt_version=chat_prompt["version_key"], greeting_prompt=greeting_prompt["prompt_text"],
         history=conversation_history,
     )
