@@ -43,3 +43,14 @@ Cada fila de avistamiento abre `GET /v1/sightings/{id}`. La ficha se autoriza en
 
 Las pruebas unitarias y las aserciones RLS/RAG contra PostgreSQL real están automatizadas. La integración continua en GitHub Actions (`.github/workflows/ci.yml`) valida TypeScript, empaqueta el frontend y corre las pruebas de seguridad con contenedores reales en cada push o pull request.
 
+## Despliegue en Producción (Railway)
+
+La plataforma completa está desplegada en **Railway** como un proyecto multi-servicio unificado:
+
+- **Frontend Web**: [https://frontend-production-946503.up.railway.app](https://frontend-production-946503.up.railway.app)
+- **Backend API**: [https://backend-production-63145.up.railway.app](https://backend-production-63145.up.railway.app) (`/docs` y `/health`)
+- **PostgreSQL**: PostgreSQL 16 con `pgvector`, RLS y migraciones automáticas.
+- **Redis**: Rate limiting distribuido y memoria de conversación para el Copiloto.
+- **Embedding Worker**: Procesamiento en segundo plano de notas y vectores de avistamientos.
+
+
