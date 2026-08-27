@@ -9,6 +9,7 @@ class Actor:
     full_name: str
     role_title: str
     accreditation_level: int
+    avatar_key: str = "spectacled_bear"
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,6 +21,7 @@ class LoginResearcher:
     role_title: str
     accreditation_level: int
     is_active: bool
+    avatar_key: str = "spectacled_bear"
 
     @property
     def actor(self) -> Actor:
@@ -28,6 +30,7 @@ class LoginResearcher:
             full_name=self.full_name,
             role_title=self.role_title,
             accreditation_level=self.accreditation_level,
+            avatar_key=self.avatar_key,
         )
 
 
@@ -46,6 +49,30 @@ class CopilotSource:
     species_common_name: str
     field_notes: str
     similarity: float
+    site_name: str | None = None
+    region: str | None = None
+
+
+
+@dataclass(frozen=True, slots=True)
+class CatalogKnowledgeItem:
+    catalog_type: str  # 'species' | 'site'
+    common_name: str
+    scientific_name: str | None = None
+    iucn_category: str | None = None
+    ecosystem: str | None = None
+    region: str | None = None
+    description: str | None = None
+    habitat: str | None = None
+    diet: str | None = None
+    conservation_status: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ConversationMessage:
+    role: str
+    content: str
+
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,6 +82,27 @@ class CopilotAnswer:
     model_name: str
     input_tokens: int
     output_tokens: int
+
+
+@dataclass(frozen=True, slots=True)
+class CopilotConversationItem:
+    conversation_id: UUID
+    title: str
+    created_at: datetime
+    updated_at: datetime
+    message_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class CopilotMessageItem:
+    message_id: UUID
+    conversation_id: UUID
+    sender_role: str
+    message_text: str
+    model_name: str | None
+    created_at: datetime
+    citations: tuple[CopilotSource, ...]
+
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,6 +169,10 @@ class Species:
     common_name: str
     scientific_name: str
     iucn_category: str
+    description: str | None = None
+    habitat: str | None = None
+    diet: str | None = None
+    conservation_status: str | None = None
     image_url: str | None = None
     image_alt_text_es: str | None = None
     image_alt_text_en: str | None = None
@@ -134,12 +186,15 @@ class Site:
     site_id: UUID
     site_name: str
     region: str
+    description: str | None = None
+    ecosystem: str | None = None
     image_url: str | None = None
     image_alt_text_es: str | None = None
     image_alt_text_en: str | None = None
     image_attribution: str | None = None
     image_license_code: str | None = None
     image_license_url: str | None = None
+
 
 
 @dataclass(frozen=True, slots=True)
@@ -171,3 +226,4 @@ class ResearcherDirectoryItem:
     full_name: str
     role_title: str
     accreditation_level: int
+    avatar_key: str

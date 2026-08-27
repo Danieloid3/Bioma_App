@@ -1,3 +1,4 @@
+import json
 from collections.abc import Sequence
 from datetime import datetime
 from uuid import UUID
@@ -8,13 +9,16 @@ from app.domain.errors import InvalidRefreshToken, RefreshTokenReuseDetected
 from app.domain.models import (
     ActivityItem,
     Actor,
+    CatalogKnowledgeItem,
     ClassificationCount,
+    CopilotConversationItem,
+    CopilotMessageItem,
     CopilotSource,
     DashboardSummary,
     LoginResearcher,
     ResearcherDirectoryItem,
-    SightingHistoryItem,
     SightingDetail,
+    SightingHistoryItem,
     SightingSearchItem,
     Site,
     Species,
@@ -132,9 +136,30 @@ class PostgresSightingRepository:
                 species_common_name=row["species_common_name"],
                 field_notes=row["field_notes"],
                 similarity=row["similarity"],
+                site_name=row.get("site_name"),
+                region=row.get("region"),
             )
             for row in rows
         ]
+
+    async def get_knowledge_catalog(self) -> list[CatalogKnowledgeItem]:
+        rows = await self._connection.fetch("SELECT * FROM bio_fn_get_knowledge_catalog()")
+        return [
+            CatalogKnowledgeItem(
+                catalog_type=row["catalog_type"],
+                common_name=row["common_name"],
+                scientific_name=row.get("scientific_name"),
+                iucn_category=row.get("iucn_category"),
+                ecosystem=row.get("ecosystem"),
+                region=row.get("region"),
+                description=row.get("description"),
+                habitat=row.get("habitat"),
+                diet=row.get("diet"),
+                conservation_status=row.get("conservation_status"),
+            )
+            for row in rows
+        ]
+
 
     async def store_embedding(
         self, sighting_id: UUID, embedding: Sequence[float], model_name: str
@@ -218,6 +243,7 @@ class PostgresCatalogRepository:
         rows = await self._connection.fetch(
             """
             SELECT sp.bio_species_id, sp.bio_common_name, sp.bio_scientific_name, sp.bio_iucn_category,
+                   sp.bio_description, sp.bio_habitat, sp.bio_diet, sp.bio_conservation_status,
                    image.bio_display_url, image.bio_alt_text_es, image.bio_alt_text_en,
                    image.bio_attribution, image.bio_license_code, image.bio_license_url
             FROM bio_species AS sp
@@ -233,6 +259,10 @@ class PostgresCatalogRepository:
                 common_name=row["bio_common_name"],
                 scientific_name=row["bio_scientific_name"],
                 iucn_category=row["bio_iucn_category"],
+                description=row.get("bio_description"),
+                habitat=row.get("bio_habitat"),
+                diet=row.get("bio_diet"),
+                conservation_status=row.get("bio_conservation_status"),
                 image_url=row["bio_display_url"],
                 image_alt_text_es=row["bio_alt_text_es"],
                 image_alt_text_en=row["bio_alt_text_en"],
@@ -247,6 +277,7 @@ class PostgresCatalogRepository:
         rows = await self._connection.fetch(
             """
             SELECT site.bio_site_id, site.bio_site_name, site.bio_region,
+                   site.bio_description, site.bio_ecosystem,
                    image.bio_display_url, image.bio_alt_text_es, image.bio_alt_text_en,
                    image.bio_attribution, image.bio_license_code, image.bio_license_url
             FROM bio_sites AS site
@@ -261,6 +292,8 @@ class PostgresCatalogRepository:
                 site_id=row["bio_site_id"],
                 site_name=row["bio_site_name"],
                 region=row["bio_region"],
+                description=row.get("bio_description"),
+                ecosystem=row.get("bio_ecosystem"),
                 image_url=row["bio_display_url"],
                 image_alt_text_es=row["bio_alt_text_es"],
                 image_alt_text_en=row["bio_alt_text_en"],
@@ -271,6 +304,7 @@ class PostgresCatalogRepository:
             for row in rows
         ]
 
+
     async def list_researchers(self) -> list[ResearcherDirectoryItem]:
         rows = await self._connection.fetch("SELECT * FROM bio_fn_researcher_directory()")
         return [
@@ -279,6 +313,7 @@ class PostgresCatalogRepository:
                 full_name=row["full_name"],
                 role_title=row["role_title"],
                 accreditation_level=row["accreditation_level"],
+                avatar_key=row["avatar_key"],
             )
             for row in rows
         ]
@@ -343,6 +378,95 @@ class PostgresCopilotAuditRepository:
         )
 
 
+class PostgresCopilotConversationRepository:
+    def __init__(self, connection: asyncpg.Connection) -> None:
+        self._connection = connection
+
+    async def create_conversation(self, title: str = "Nueva consulta") -> UUID:
+        return await self._connection.fetchval(
+            "SELECT bio_fn_create_copilot_conversation($1)", title
+        )
+
+    async def list_conversations(self, limit: int = 30) -> list[CopilotConversationItem]:
+        rows = await self._connection.fetch(
+            "SELECT * FROM bio_fn_list_copilot_conversations($1)", limit
+        )
+        return [
+            CopilotConversationItem(
+                conversation_id=row["conversation_id"],
+                title=row["title"],
+                created_at=row["created_at"],
+                updated_at=row["updated_at"],
+                message_count=int(row["message_count"]),
+            )
+            for row in rows
+        ]
+
+    async def get_messages(self, conversation_id: UUID) -> list[CopilotMessageItem]:
+        rows = await self._connection.fetch(
+            "SELECT * FROM bio_fn_get_copilot_conversation_messages($1)", conversation_id
+        )
+        messages: list[CopilotMessageItem] = []
+        for row in rows:
+            raw_citations = row["citations"]
+            citations_data = (
+                json.loads(raw_citations) if isinstance(raw_citations, str) else raw_citations
+            )
+            citations = tuple(
+                CopilotSource(
+                    sighting_id=UUID(c["sighting_id"]),
+                    observation_reference=c["observation_reference"],
+                    species_common_name=c["species_common_name"],
+                    field_notes=c["field_notes"],
+                    similarity=float(c["similarity"]) if c.get("similarity") is not None else 0.0,
+                )
+                for c in (citations_data or [])
+            )
+            messages.append(
+                CopilotMessageItem(
+                    message_id=row["message_id"],
+                    conversation_id=row["conversation_id"],
+                    sender_role=row["sender_role"],
+                    message_text=row["message_text"],
+                    model_name=row["model_name"],
+                    created_at=row["created_at"],
+                    citations=citations,
+                )
+            )
+        return messages
+
+    async def record_turn(
+        self,
+        *,
+        conversation_id: UUID,
+        prompt: str,
+        answer: str,
+        system_prompt_version: str,
+        model_name: str,
+        input_tokens: int,
+        output_tokens: int,
+        sources: Sequence[CopilotSource],
+    ) -> tuple[UUID, UUID, UUID]:
+        row = await self._connection.fetchrow(
+            "SELECT * FROM bio_fn_record_copilot_turn($1, $2, $3, $4, $5, $6, $7, $8::uuid[], $9::numeric[])",
+            conversation_id,
+            prompt,
+            answer,
+            system_prompt_version,
+            model_name,
+            input_tokens,
+            output_tokens,
+            [source.sighting_id for source in sources],
+            [source.similarity for source in sources],
+        )
+        return row["usage_id"], row["user_message_id"], row["assistant_message_id"]
+
+    async def delete_conversation(self, conversation_id: UUID) -> None:
+        await self._connection.execute(
+            "SELECT bio_fn_delete_copilot_conversation($1)", conversation_id
+        )
+
+
 class PostgresAuthenticationRepository:
     def __init__(self, connection: asyncpg.Connection) -> None:
         self._connection = connection
@@ -360,6 +484,7 @@ class PostgresAuthenticationRepository:
             password_hash=row["password_hash"],
             role_title=row["role_title"],
             accreditation_level=row["accreditation_level"],
+            avatar_key=row["avatar_key"],
             is_active=row["is_active"],
         )
 
@@ -402,6 +527,7 @@ class PostgresAuthenticationRepository:
             full_name=row["full_name"],
             role_title=row["role_title"],
             accreditation_level=row["accreditation_level"],
+            avatar_key=row["avatar_key"],
         )
 
     async def revoke_refresh_token_family(self, *, token_hash: str, reason: str) -> None:

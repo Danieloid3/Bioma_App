@@ -1,9 +1,14 @@
 from collections.abc import Sequence
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
-from app.domain.models import CopilotAnswer, CopilotSource
+from app.domain.models import (
+    CatalogKnowledgeItem,
+    ConversationMessage,
+    CopilotAnswer,
+    CopilotSource,
+)
 
 
 class LangChainOpenAIGateway:
@@ -29,22 +34,51 @@ class LangChainOpenAIGateway:
         question: str,
         sources: Sequence[CopilotSource],
         system_prompt: str,
+        history: Sequence[ConversationMessage] = (),
+        catalog_knowledge: Sequence[CatalogKnowledgeItem] = (),
     ) -> CopilotAnswer:
-        context = "\n\n".join(
-            f"[{source.observation_reference}] {source.species_common_name}: {source.field_notes}"
-            for source in sources
-        ) or "No authorized context was retrieved."
-        response = await self._chat.ainvoke(
-            [
-                SystemMessage(content=system_prompt),
-                HumanMessage(
-                    content=(
-                        f"Authenticated researcher: {actor_name} ({actor_role}).\n"
-                        f"Authorized context only:\n{context}\n\nQuestion: {question}"
+        sections: list[str] = [f"Investigador autenticado: {actor_name} ({actor_role})."]
+
+        if catalog_knowledge:
+            cat_lines: list[str] = ["=== Catálogo de Especies y Sitios de Bioma ==="]
+            for item in catalog_knowledge:
+                if item.catalog_type == "species":
+                    cat_lines.append(
+                        f"• {item.common_name} ({item.scientific_name}, UICN: {item.iucn_category}): "
+                        f"{item.description or ''} Hábitat: {item.habitat or ''}. "
+                        f"Dieta: {item.diet or ''}. Estado de conservación: {item.conservation_status or ''}."
                     )
-                ),
-            ]
-        )
+                elif item.catalog_type == "site":
+                    cat_lines.append(
+                        f"• {item.common_name} ({item.region}, Ecosistema: {item.ecosystem or 'N/A'}): "
+                        f"{item.description or ''}"
+                    )
+            sections.append("\n".join(cat_lines))
+
+        if sources:
+            context_blocks: list[str] = ["=== Avistamientos de Campo Autorizados ==="]
+            for source in sources:
+                loc = f" (Sitio: {source.site_name}, {source.region})" if source.site_name else ""
+                context_blocks.append(
+                    f"[{source.observation_reference}] Especie: {source.species_common_name}{loc}. Notas de campo: {source.field_notes}"
+                )
+            sections.append("\n".join(context_blocks))
+
+        sections.append(f"Pregunta del investigador: {question}")
+        content = "\n\n".join(sections)
+
+
+
+        messages: list[BaseMessage] = [SystemMessage(content=system_prompt)]
+        for msg in history:
+            if msg.role == "user":
+                messages.append(HumanMessage(content=msg.content))
+            elif msg.role == "assistant":
+                messages.append(AIMessage(content=msg.content))
+
+        messages.append(HumanMessage(content=content))
+
+        response = await self._chat.ainvoke(messages)
         usage = getattr(response, "usage_metadata", {}) or {}
         return CopilotAnswer(
             text=str(response.content),
@@ -53,4 +87,5 @@ class LangChainOpenAIGateway:
             input_tokens=int(usage.get("input_tokens", 0)),
             output_tokens=int(usage.get("output_tokens", 0)),
         )
+
 

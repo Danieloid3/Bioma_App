@@ -3,6 +3,8 @@ export type Researcher = {
   full_name: string;
   role_title: string;
   accreditation_level: number;
+  /** Optional presentation preference supplied by the API; never persisted by the client. */
+  animal_avatar_key?: string | null;
 };
 
 export type AuthenticationResponse = {
@@ -59,13 +61,20 @@ export type SpeciesCatalogItem = {
   common_name: string;
   scientific_name: string;
   iucn_category: string;
+  description?: string | null;
+  habitat?: string | null;
+  diet?: string | null;
+  conservation_status?: string | null;
 } & CuratedImage;
 
 export type SiteCatalogItem = {
   site_id: string;
   site_name: string;
   region: string;
+  description?: string | null;
+  ecosystem?: string | null;
 } & CuratedImage;
+
 
 /** Flexible catalogue shape used only by sighting filter controls. */
 export type CatalogItem = {
@@ -80,7 +89,7 @@ export type CatalogItem = {
 
 export type CatalogResponse = { items: SpeciesCatalogItem[] };
 export type SiteCatalogResponse = { items: SiteCatalogItem[] };
-export type ResearcherDirectoryItem = { researcher_id: string; full_name: string; role_title: string; accreditation_level: number };
+export type ResearcherDirectoryItem = { researcher_id: string; full_name: string; role_title: string; accreditation_level: number; animal_avatar_key?: string | null };
 export type ResearcherDirectoryResponse = { items: ResearcherDirectoryItem[] };
 
 export type DashboardSummary = { visible_sightings: number; registered_species: number; monitored_sites: number; field_notes: number };
@@ -102,4 +111,43 @@ export type CopilotAnswer = {
   input_tokens: number;
   output_tokens: number;
   sources: CopilotSource[];
+  conversation_id: string;
 };
+
+export type CopilotConversation = {
+  conversation_id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
+};
+
+export type CopilotConversationItem = CopilotConversation;
+
+export type CopilotConversationListResponse = {
+  items: CopilotConversation[];
+};
+
+export type CopilotMessage = {
+  message_id: string;
+  conversation_id: string;
+  sender_role: "user" | "assistant" | "error";
+  message_text: string;
+  model_name?: string | null;
+  created_at: string;
+  citations: CopilotSource[];
+};
+
+export type CopilotMessageListResponse = {
+  items: CopilotMessage[];
+};
+
+export type CopilotUsageItem = {
+  researcher_id: string;
+  total_queries: number;
+  total_tokens: number;
+  last_query_at: string;
+};
+
+export type CopilotUsageResponse = { item: CopilotUsageItem | null };
+

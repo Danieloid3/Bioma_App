@@ -35,6 +35,7 @@ class AuthenticatedResearcherResponse(BaseModel):
     full_name: str
     role_title: str
     accreditation_level: int
+    avatar_key: str
 
 
 class AuthenticationResponse(BaseModel):
@@ -62,6 +63,7 @@ def _authentication_response(result: AuthenticationResult) -> AuthenticationResp
             full_name=actor.full_name,
             role_title=actor.role_title,
             accreditation_level=actor.accreditation_level,
+            avatar_key=actor.avatar_key,
         ),
     )
 

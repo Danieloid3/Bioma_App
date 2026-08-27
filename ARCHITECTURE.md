@@ -31,7 +31,7 @@ No hay borrado físico: la anulación es lógica y un trigger conserva revisione
 2. Una transacción corta recupera fuentes vectoriales visibles por RLS.
 3. La conexión se cierra antes de llamar al proveedor IA.
 4. LangChain recibe solo esas fuentes y el prompt del servidor.
-5. Una segunda transacción guarda uso y citas.
+5. El caso de uso conserva solo referencias recuperadas por RLS y citadas explícitamente en la respuesta; una segunda transacción guarda ese uso y esas citas.
 
 Si RLS no devuelve fuentes, el caso de uso responde una negativa determinista y transparente, sin llamar al modelo. Las notas de campo son datos no confiables, nunca instrucciones.
 
@@ -44,12 +44,20 @@ Los embeddings se procesan en el worker independiente `app/workers/embeddings.py
 - Errores HTTP uniformes y `X-Correlation-ID` en todas las respuestas.
 - Docker Compose levanta PostgreSQL/pgvector, migrador, API, Redis y el worker de embeddings. El worker consume notas pendientes tras cada carga para que RAG tenga contexto disponible.
 
-## Dashboard y catálogo
+## Dashboard, catálogo enriquecido y fichas científicas
 
-El dashboard llama a funciones `SECURITY INVOKER` que agregan únicamente filas de `bio_sightings` visibles bajo RLS. La actividad une creación y revisiones, y `bio_sighting_revisions` posee su propia política RLS antes de poder leerse. Las imágenes de especie y sitio son catálogos curados en `bio_species_images` y `bio_site_images`: conservan fuente, licencia y textos alternativos; no sustituyen ni comparten el modelo de evidencias de avistamiento.
+El dashboard llama a funciones `SECURITY INVOKER` que agregan únicamente filas de `bio_sightings` visibles bajo RLS. La actividad une creación y revisiones, y `bio_sighting_revisions` posee su propia política RLS antes de poder leerse.
+
+El catálogo oficial de especies (`bio_species`) y sitios (`bio_sites`) almacena fichas científicas curadas con descripción, hábitat, dieta, bioma y estado de conservación UICN, además de imágenes destacadas con fuente, licencia y textos alternativos. Estas fichas se consultan mediante `GET /v1/species` y `GET /v1/sites`, y se renderizan interactivamente en el cliente sin exponer ubicaciones sensibles.
 
 La ficha de un avistamiento se obtiene con `bio_fn_get_sighting_detail`, también `SECURITY INVOKER`. El API devuelve 404 para una fila inexistente o no visible y evita que el cliente pueda distinguir ambos escenarios.
 
-## Pendiente de integración
+Los investigadores almacenan una clave de avatar de una biblioteca cerrada. Se entrega en login, refresh y directorio, pero no participa en el JWT como autorización ni habilita escrituras arbitrarias.
 
-El backend emite `pg_notify` ante cambios de avistamientos, pero aún no expone WebSocket ni SSE. La entrega de tiempo real queda pendiente junto con el frontend.
+## CI/CD y Automatización
+
+El repositorio cuenta con integración continua en GitHub Actions (`.github/workflows/ci.yml`):
+- Validación de tipos TypeScript (`npx tsc --noEmit`) y compilación Vite de frontend.
+- Validación de configuración `docker compose config`.
+- Ejecución de migraciones y pruebas de seguridad RLS/RAG reales contra contenedor PostgreSQL (`docker compose --profile test run --rm database-tests`).
+

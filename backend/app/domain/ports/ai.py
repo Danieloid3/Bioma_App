@@ -1,6 +1,12 @@
-from typing import Protocol, Sequence
+from collections.abc import Sequence
+from typing import Protocol
 
-from app.domain.models import CopilotAnswer, CopilotSource
+from app.domain.models import (
+    CatalogKnowledgeItem,
+    ConversationMessage,
+    CopilotAnswer,
+    CopilotSource,
+)
 
 
 class EmbeddingProvider(Protocol):
@@ -22,4 +28,8 @@ class CopilotProvider(Protocol):
         question: str,
         sources: Sequence[CopilotSource],
         system_prompt: str,
+        history: Sequence[ConversationMessage] = (),
+        catalog_knowledge: Sequence[CatalogKnowledgeItem] = (),
     ) -> CopilotAnswer: ...
+
+

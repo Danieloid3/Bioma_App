@@ -1,5 +1,6 @@
+from collections.abc import Sequence
 from datetime import datetime
-from typing import Protocol, Sequence
+from typing import Protocol
 from uuid import UUID
 
 from app.domain.models import (
@@ -7,12 +8,12 @@ from app.domain.models import (
     ClassificationCount,
     CopilotSource,
     DashboardSummary,
-    SightingHistoryItem,
+    ResearcherDirectoryItem,
     SightingDetail,
+    SightingHistoryItem,
     SightingSearchItem,
     Site,
     Species,
-    ResearcherDirectoryItem,
 )
 
 

@@ -35,6 +35,7 @@ async def get_current_actor(
             full_name=str(claims["name"]),
             role_title=str(claims["role"]),
             accreditation_level=int(claims["accreditation_level"]),
+            avatar_key=str(claims.get("avatar_key", "spectacled_bear")),
         )
     except (jwt.PyJWTError, KeyError, ValueError) as error:
         raise HTTPException(

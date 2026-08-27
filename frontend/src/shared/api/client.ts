@@ -33,6 +33,11 @@ export class ApiClient {
     return this.request<T>(path, { method: "PATCH", body: JSON.stringify(body) });
   }
 
+  async delete<T>(path: string): Promise<T> {
+    return this.request<T>(path, { method: "DELETE" });
+  }
+
+
   async request<T>(path: string, init: RequestInit): Promise<T> {
     const token = this.tokenProvider();
     const response = await fetch(`${apiBaseUrl}${path}`, {

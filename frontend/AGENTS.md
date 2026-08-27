@@ -56,6 +56,8 @@ El access token permanece solo en memoria. Al recargar, la aplicación restaura 
 - Todos los `fetch` pasan por `shared/api`; incluir correlation ID, `credentials: 'include'` cuando corresponda y manejo uniforme de errores.
 - No renderizar HTML de `ts_headline` ni contenido del copiloto sin sanitización. Las citas son enlaces/identificadores de datos ya autorizados.
 - Si una coordenada no viene en la respuesta, mostrar estado de acceso limitado u omitir el registro conforme al contrato de la API; nunca inferir ni aproximar ubicación.
+- El panel de Copiloto IA gestiona hilos de conversación persistentes (`/v1/copilot/conversations`) y su historial de mensajes, permitiendo crear nuevas consultas, alternar entre hilos y mantener la sesión activa sin pérdida de contexto.
+
 
 ## Calidad
 
@@ -73,3 +75,14 @@ El access token permanece solo en memoria. Al recargar, la aplicación restaura 
 - El dashboard consume exclusivamente `GET /v1/dashboard`; las tarjetas y el gráfico no usan cifras de relleno. Especies recibe su foto icónica, texto alternativo y atribución desde el API; abrir la licencia en una nueva pestaña y no tratarla como evidencia de campo.
 - Las filas de avistamientos son abribles y solicitan su ficha al API; no usar datos de lista para reconstruir detalles o coordenadas. El copiloto conserva solamente el historial de la sesión en memoria, renderiza texto sin HTML y envía con Enter (Shift+Enter añade salto).
 - Las referencias `obs-*` dentro de una respuesta del copiloto solo se convierten en controles clicables si coinciden con `sources` devueltas por el API; el control abre la ficha protegida global, nunca una URL o identificador generado por el modelo.
+- El copiloto consulta `GET /v1/copilot/usage` para mostrar exclusivamente el total autorizado del actor (consultas, tokens procesados y última consulta); invalida el resumen después de una respuesta y no estima consumo en el cliente.
+- In desktop, the main content area is constrained to viewport height with `overflow: hidden`. The view-frame scrolls internally without visible scrollbars. This prevents any full-page scroll on desktop. (Superficies acotadas con scroll interno).
+- The sidebar has an organic curved shape with rounded corners on top-right (1.5rem) and bottom-right (2.75rem), stopping short of full viewport height to reveal the organic background beneath.
+- `shared/components/AnimalAvatar.tsx` representa investigadores con iconografía animal de Lucide. Consume `animal_avatar_key` opcional cuando el API lo entrega y, mientras no exista, deriva un icono estable desde `researcher_id`; no persiste ni inventa perfiles de investigador.
+- Toda acción destructiva o de anulación (anular avistamiento, eliminar conversación del copiloto) requiere siempre confirmación explícita mediante un modal / popup con advertencia y detalles antes de ejecutar la mutación.
+- Los botones de edición y anulación de avistamientos solo se muestran y ejecutan para los registros creados por el propio investigador autenticado (`isOwner`).
+- Las conversaciones del copiloto tienen ciclo de vida explícito: al presionar "Nueva consulta" se crea un nuevo registro en PostgreSQL (`POST /v1/copilot/conversations`), se selecciona como activo y se limpia la vista; al enviar la primera pregunta, el título se actualiza automáticamente; al eliminar, se archiva (`DELETE`) y se conmuta a la siguiente conversación activa.
+- Las respuestas del copiloto formatean Markdown completo (`## ` H2, `### ` H3, cursivas científicas `*Tremarctos ornatus*`, negritas y listas con viñetas) y renderizan citas interactivas protegidas `[obs-XXXX]`.
+- Las vistas de catálogo de Especies y Sitios cuentan con fichas científicas modales interactivas (`SpeciesDetailModal`, `SiteDetailModal`) con imagen panorámica hero (`21rem`), degradado difuminado marfil, insignias UICN y tarjetas de descripción, hábitat, dieta y estado de conservación.
+- Pipeline de CI/CD activo en `.github/workflows/ci.yml` que valida TypeScript (`npx tsc --noEmit`), empaqueta Vite y ejecuta pruebas automatizadas en GitHub Actions.
+- Registration plan documented in `docs/registration-plan.md` (pending institutional verification before implementation).

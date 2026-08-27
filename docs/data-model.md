@@ -8,3 +8,6 @@ En 2FN se separan las entidades dependientes de su identidad propia. En 3FN se e
 
 Las revisiones, tokens y citas son entidades operativas añadidas fuera del corpus para cumplir trazabilidad científica, autenticación rotativa y auditoría del RAG.
 
+El catálogo oficial amplía `bio_species` con `bio_description`, `bio_habitat`, `bio_diet` y `bio_conservation_status`, y `bio_sites` con `bio_description` y `bio_ecosystem` (Migración `027`), centralizando la información biológica y ecológica para consulta en catálogo y recuperación contextual por el copiloto.
+
+

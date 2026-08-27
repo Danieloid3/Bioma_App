@@ -38,17 +38,28 @@ No introducir CQRS, event sourcing, mediators ni abstracciones genéricas sin un
 - Añadir correlation ID a logs, errores y respuestas. Mapear errores SQL conocidos a HTTP sin filtrar detalles internos.
 - El contrato de error HTTP es `error.code`, `error.message`, `error.correlation_id` y, para validación, `error.details`; mantenerlo estable para el frontend.
 
-## Copiloto RAG
+## Copiloto RAG y Memoria Conversacional
 
 1. Validar el actor y la pregunta.
-2. Generar embedding mediante el puerto.
-3. Recuperar fuentes con `bio_fn_retrieve_copilot_context` dentro de `actor_transaction`.
-4. Construir el prompt en el servidor usando solo esas fuentes.
-5. Tratar notas como datos no confiables, citar `obs_ref` y registrar uso/citas.
+2. Recuperar la memoria a corto plazo en Redis (`bioma:copilot:context:{actor_id}:{conv_id}`) con ventana deslizante de 16 mensajes (8 turnos).
+3. Generar embedding mediante el puerto.
+4. Recuperar fuentes con `bio_fn_retrieve_copilot_context` dentro de `actor_transaction`.
+5. Construir el prompt en el servidor usando las fuentes autorizadas y el historial conversacional.
+6. Tratar notas como datos no confiables, citar `obs_ref` y persistir el turno en `bio_copilot_messages` y `bio_copilot_conversations` bajo RLS.
 
 Si RLS no devuelve fuentes, el caso de uso responde `NO_AUTHORIZED_CONTEXT_RESPONSE` sin invocar al LLM y deja la auditoría registrada. Las pruebas unitarias de negativas viven en `tests/test_copilot_negative_responses.py`; las pruebas RLS/RAG contra PostgreSQL real viven en `database/tests/`.
 
-El endpoint `POST /v1/copilot/ask` devuelve siempre las fuentes recuperadas para que la interfaz pueda citarlas; no debe aceptar contexto enviado por el cliente. `GET /v1/copilot/usage` expone únicamente el resumen del actor autenticado.
+Los endpoints `/v1/copilot/conversations` y `/v1/copilot/conversations/{id}/messages` permiten gestionar hilos persistentes con aislamiento RLS completo. El endpoint `POST /v1/copilot/ask` asocia la consulta a un hilo activo, inyecta los mensajes previos de Redis y persiste la interacción.
+- `024_soft_delete_copilot_conversations.sql`: Soft delete y archivado para conversaciones (`bio_is_active`, `bio_archived_at`).
+- `025_restrict_edit_void_to_owner.sql`: Procedimientos `bio_sp_edit_sighting` y `bio_sp_void_sighting` restringidos estrictamente al investigador autor del avistamiento (`bio_researcher_id = v_actor_id`).
+- `026_robust_delete_copilot_conversation.sql`: Función `bio_fn_delete_copilot_conversation` con `SECURITY INVOKER` respetando políticas RLS de `bio_app_user`.
+- `027_enrich_species_and_sites_catalog.sql`: Catálogo científico descriptivo de especies y sitios con inyección de conocimiento biológico y de áreas protegidas al copiloto.
+
+
+
+
+El endpoint `POST /v1/copilot/ask` devuelve únicamente fuentes recuperadas por RLS que estén citadas explícitamente como `[obs-ref]` en su respuesta. El caso de uso descarta referencias inventadas; si no hay una cita válida, devuelve una negativa verificable y audita cero citas. No debe aceptar contexto enviado por el cliente. `GET /v1/copilot/usage` expone únicamente el resumen del actor autenticado.
+
 
 `GET /v1/dashboard` usa funciones SQL invocadas bajo el actor para métricas, clasificación y actividad. No calcular agregados desde una conexión sin actor. `bio_sighting_revisions` tiene RLS propio porque conserva contenido sensible histórico; ningún endpoint debe consultar revisiones sin la transacción de actor.
 
@@ -61,6 +72,8 @@ Implementación local: `RedisRateLimiter` usa un script Lua atómico (`INCR` + `
 No hay excepción para prompts de usuarios, administradores o proveedores: contexto no autorizado nunca llega al modelo. LangChain es un adaptador, no el núcleo del dominio.
 
 Configuración inicial: `gpt-5.6-terra` para conversación RAG (equilibrio de calidad y coste) y `text-embedding-3-small` para embeddings de 1536 dimensiones, compatibles con la columna `vector(1536)` de PostgreSQL.
+
+Los investigadores persisten una clave de avatar dentro de una biblioteca cerrada. La autenticación y el directorio la devuelven como dato de presentación; un futuro caso de uso de alta usará `secrets.choice` y nunca aceptará un URL o clave arbitraria del cliente.
 
 ## Buenas prácticas
 

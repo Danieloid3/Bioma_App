@@ -38,6 +38,7 @@ class JwtAccessTokenIssuer:
                 "name": actor.full_name,
                 "role": actor.role_title,
                 "accreditation_level": actor.accreditation_level,
+                "avatar_key": actor.avatar_key,
                 "type": "access",
                 "iat": issued_at,
                 "exp": issued_at + timedelta(seconds=self.expires_in_seconds),

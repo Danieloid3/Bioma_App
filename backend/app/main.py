@@ -38,7 +38,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[get_settings().frontend_origin],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+
     allow_headers=["Authorization", "Content-Type", "X-Correlation-ID"],
 )
 install_exception_handlers(app)

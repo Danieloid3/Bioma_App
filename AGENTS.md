@@ -35,12 +35,17 @@ La arquitectura detallada vive en `ARCHITECTURE.md`; decisiones justificadas en 
 - Añadir pruebas de integración contra PostgreSQL real para cada cambio de autorización o migración relevante.
 - Mantener OpenAPI, README, ARCHITECTURE y DECISIONS alineados con el código.
 - Estado backend: cuando RLS no recupera fuentes para una consulta RAG, responder con una negativa determinista y auditable sin invocar al LLM; conservar pruebas unitarias y pruebas SQL RLS/RAG para este flujo.
+- Las fuentes expuestas y auditadas por el copiloto son únicamente las referencias autorizadas que aparecen citadas de forma exacta en la respuesta. Si el modelo no cita una fuente válida, Bioma devuelve una negativa verificable y no persiste citas.
 - Estado frontend: las vistas consumen el contrato de API mediante un cliente único, con bearer solo en memoria, refresh cookie HttpOnly, TanStack Query e i18n; el dashboard no inventa métricas que el API no expone.
-- Estado producto: `GET /v1/dashboard` calcula métricas, clasificación y actividad desde filas visibles por RLS. Las revisiones también tienen RLS, pues contienen coordenadas y notas históricas. Los catálogos de especies y sitios incluyen imágenes destacadas curadas con fuente, licencia y atribución; no son evidencia de un avistamiento ni exponen ubicaciones sensibles.
+- Estado producto: `GET /v1/dashboard` calcula métricas, clasificación y actividad desde filas visibles por RLS. Las revisiones también tienen RLS, pues contienen coordenadas y notas históricas. Los catálogos de especies y sitios incluyen fichas científicas y ecológicas con imágenes destacadas curadas con fuente, licencia y atribución; se visualizan en modales interactivos y no son evidencia de un avistamiento ni exponen ubicaciones sensibles.
+- El copiloto RAG integra el catálogo biológico oficial (`bio_fn_get_knowledge_catalog()`), responde consultas con formato Markdown y cita de forma interactiva y verificable únicamente avistamientos autorizados por RLS (`[obs-XXXX]`).
+- CI/CD automatizado en `.github/workflows/ci.yml` ejecutando validación de tipos TypeScript, compilación y pruebas de seguridad RLS/RAG contra PostgreSQL real.
+- Cada investigador persistido tiene una clave de avatar de una biblioteca finita; es un atributo de presentación devuelto por autenticación y directorio, no una credencial ni un URL aportado por cliente. El registro público permanece pendiente de verificación institucional.
 - El worker de embeddings es un servicio normal de Compose (no un perfil opcional): tras migración/carga procesa notas pendientes y habilita recuperación RAG sin intervención manual.
 - `GET /v1/sightings/{id}` es una ficha protegida por RLS y responde 404 tanto para UUID inexistente como para una fila no autorizada. El listado incluye la imagen destacada de catálogo; la ficha solo muestra coordenadas después de que la misma política RLS autorice el registro.
 - Al realizar un commit, actualizar este archivo y el `AGENTS.md` de la capa afectada cuando cambie contexto, arquitectura, reglas, decisiones, comandos, estructura o estado del proyecto. No hacer cambios cosméticos solo para forzar una actualización.
 - Antes de un push: compilar backend y frontend, ejecutar pruebas de seguridad y comprobar `docker compose config`.
+
 
 ## Comandos de trabajo
 
