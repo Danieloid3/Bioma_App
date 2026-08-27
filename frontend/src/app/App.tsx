@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Bird, Bot, FileBarChart, House, Languages, Leaf, MapPin, Menu, Search, Settings, UsersRound, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -22,10 +22,17 @@ export function App() {
   const [view, setView] = useState<View>("dashboard");
   const [menuOpen, setMenuOpen] = useState(false);
   const [selectedSightingId, setSelectedSightingId] = useState<string | null>(null);
+  const sessionRestoreStarted = useRef(false);
   const api = useMemo(() => new ApiClient(() => token), [token]);
   const nextLanguage = i18n.language.startsWith("es") ? "en" : "es";
 
   useEffect(() => {
+    // React Strict Mode deliberately re-runs effects in development. A refresh
+    // token is rotated on use, so issuing two concurrent restores would make
+    // the second request look like token reuse and revoke the session family.
+    if (sessionRestoreStarted.current) return;
+    sessionRestoreStarted.current = true;
+
     async function restoreSession() {
       try {
         const response = await new ApiClient(() => null).post<AuthenticationResponse>("/v1/auth/refresh");

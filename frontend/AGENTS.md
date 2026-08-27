@@ -38,6 +38,8 @@ Usar fondos marfil cálidos y neutros oscuros de contraste cuando sea necesario 
 
 El lienzo de las vistas de escritorio usa `public/organic-workspace-background.png` como ambientación detrás del contenido, con una capa marfil que preserva contraste. El selector de idioma vive únicamente en la barra lateral. Los listados de avistamientos deben comunicar con `:hover` y `:focus-visible` que abren su ficha.
 
+El access token permanece solo en memoria. Al recargar, la aplicación restaura la sesión una sola vez usando la cookie HttpOnly y el refresh token rotativo; no duplicar esa petición, incluso bajo React Strict Mode.
+
 ### Estética y responsive
 
 - Escritorio: sidebar verde fija, cabecera ligera, métricas en tarjetas, contenido espacioso y sombras muy sutiles.
