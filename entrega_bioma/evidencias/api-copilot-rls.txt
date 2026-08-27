@@ -1,0 +1,7 @@
+Comando:
+docker compose exec -T -e BIOMA_API_URL=http://host.docker.internal:18001 api pytest -q tests/test_api_copilot_rls_http.py
+
+Resultado: PASS
+1 passed in 1.18s
+
+La cuenta de baja acreditación Valentina Ríos inició sesión y preguntó por `obs-5001` (confidencial). El API respondió correctamente, pero `obs-5001` y `obs-5007` no aparecieron ni en `sources` ni en la respuesta textual.
