@@ -72,7 +72,11 @@
 
 @media (min-width: 901px) {
   .hero-center-art {
-    transform: translateY(22%);
+    position: absolute;
+    top: 52%;
+    left: 0;
+    right: 0;
+    transform: translateY(-50%);
   }
 }
 .hero-bird-large {
