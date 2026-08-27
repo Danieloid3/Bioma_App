@@ -58,7 +58,7 @@ export function LoginPage({ onLogin }: Props) {
         <div className="login-card-container">
           <form className="login-card" onSubmit={submit}>
             <header className="login-header">
-              <h1>{t("login.title", "Bienvenida de nuevo")}</h1>
+              <h1>{t("login.title", "Bienvenido a Bioma")}</h1>
               <p className="login-desc">{t("login.subtitle", "Ingresa para continuar registrando la vida que observas.")}</p>
             </header>
 
