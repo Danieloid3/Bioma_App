@@ -245,14 +245,28 @@ class PostgresCatalogRepository:
 
     async def list_sites(self) -> list[Site]:
         rows = await self._connection.fetch(
-            "SELECT bio_site_id, bio_site_name, bio_region "
-            "FROM bio_sites ORDER BY bio_site_name, bio_site_id"
+            """
+            SELECT site.bio_site_id, site.bio_site_name, site.bio_region,
+                   image.bio_display_url, image.bio_alt_text_es, image.bio_alt_text_en,
+                   image.bio_attribution, image.bio_license_code, image.bio_license_url
+            FROM bio_sites AS site
+            LEFT JOIN bio_site_images AS image
+              ON image.bio_site_id = site.bio_site_id
+             AND image.bio_is_featured = true AND image.bio_is_active = true
+            ORDER BY site.bio_site_name, site.bio_site_id
+            """
         )
         return [
             Site(
                 site_id=row["bio_site_id"],
                 site_name=row["bio_site_name"],
                 region=row["bio_region"],
+                image_url=row["bio_display_url"],
+                image_alt_text_es=row["bio_alt_text_es"],
+                image_alt_text_en=row["bio_alt_text_en"],
+                image_attribution=row["bio_attribution"],
+                image_license_code=row["bio_license_code"],
+                image_license_url=row["bio_license_url"],
             )
             for row in rows
         ]

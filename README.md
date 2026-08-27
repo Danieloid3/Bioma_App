@@ -37,7 +37,7 @@ docker compose --profile test run --rm database-tests
 
 El monorepo contiene la base de datos, API FastAPI y cliente React. El backend incluye autenticación JWT con refresh rotativo, RLS por acreditación/autoría, CRUD de avistamientos con revisiones, búsqueda textual y RAG con pgvector/LangChain. Redis aplica rate limiting y el worker de embeddings se inicia junto con el resto de servicios para que el copiloto disponga de contexto después de la carga inicial.
 
-El dashboard usa `GET /v1/dashboard` para mostrar métricas, clasificación y actividad autorizadas. También están disponibles `GET /v1/species`, `GET /v1/sites` y `GET /v1/researchers`; las especies entregan una fotografía icónica curada junto a texto alternativo, autoría y licencia. Las fotos de catálogo no son evidencias de campo.
+El dashboard usa `GET /v1/dashboard` para mostrar métricas, clasificación y actividad autorizadas. También están disponibles `GET /v1/species`, `GET /v1/sites` y `GET /v1/researchers`; especies y sitios entregan una imagen icónica curada junto a texto alternativo, autoría y licencia. Las fotos de catálogo no son evidencias de campo ni describen un avistamiento concreto.
 
 Cada fila de avistamiento abre `GET /v1/sightings/{id}`. La ficha se autoriza en PostgreSQL y solo entonces muestra la nota y las coordenadas exactas; un registro no visible responde igual que uno inexistente.
 

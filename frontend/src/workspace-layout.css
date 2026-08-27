@@ -1,0 +1,65 @@
+/* Centered workspace canvas with the approved organic background artwork. */
+.main-content {
+  min-height: 100vh;
+  background-color: var(--ivory);
+  background-image: linear-gradient(#faf8f2d9, #faf8f2d9), url('/organic-workspace-background.png');
+  background-position: center;
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+.topbar {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto 1.75rem;
+}
+
+.view-frame {
+  width: 100%;
+  max-width: 1180px;
+  margin-inline: auto;
+}
+
+.metric-card,
+.sightings-card,
+.copilot-card,
+.profile-card {
+  background: #fffdf8ed;
+}
+
+/* An avistamiento is a primary drill-down control, not passive text. */
+.sighting-open {
+  border-radius: .75rem;
+  padding: .45rem;
+  transition: background-color .16s ease, transform .16s ease, box-shadow .16s ease;
+}
+
+.sighting-open:hover,
+.sighting-open:focus-visible {
+  background: #f4ecdf;
+  transform: translateX(.2rem);
+  box-shadow: inset 3px 0 var(--gold);
+  outline: none;
+}
+
+.sighting-open:hover .sighting-main h3,
+.sighting-open:focus-visible .sighting-main h3 {
+  color: var(--brown-deep);
+}
+
+.sighting-open:focus-visible {
+  box-shadow: inset 3px 0 var(--gold), 0 0 0 3px #a68a6440;
+}
+
+.photo-credit {
+  display: block;
+  margin-top: .7rem;
+  color: var(--brown);
+  font-size: .68rem;
+  line-height: 1.35;
+}
+
+@media (max-width: 900px) {
+  .main-content { background-attachment: scroll; }
+  .topbar { margin-bottom: 1.25rem; }
+}

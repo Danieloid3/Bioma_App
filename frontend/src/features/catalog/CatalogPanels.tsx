@@ -2,11 +2,40 @@ import { BadgeInfo, ImageOff, MapPinned, UsersRound } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
-import type { CatalogResponse, ResearcherDirectoryResponse } from "../../domain/contracts";
+import type { CatalogResponse, ResearcherDirectoryResponse, SiteCatalogResponse } from "../../domain/contracts";
 import { ApiClient } from "../../shared/api/client";
 
-export function SpeciesPanel({ api }: { api: ApiClient }) { const { i18n, t } = useTranslation(); const query = useQuery({ queryKey: ["species"], queryFn: () => api.get<CatalogResponse>("/v1/species") }); if (query.isLoading) return <LoadingGrid />; if (query.isError) return <ErrorState retry={() => void query.refetch()} />; return <section className="catalog-page"><div className="section-heading"><div><p className="eyebrow">{t("catalog.eyebrow")}</p><h2>{t("catalog.speciesTitle")}</h2></div></div><div className="species-grid">{query.data?.items.map((species) => <article className="species-card" key={species.species_id}>{species.image_url ? <img src={species.image_url} alt={i18n.language.startsWith("es") ? species.image_alt_text_es : species.image_alt_text_en} /> : <div className="image-fallback"><ImageOff /></div>}<div className="species-copy"><span>{species.iucn_category}</span><h3>{species.common_name}</h3><i>{species.scientific_name}</i>{species.image_attribution && <a href={species.image_license_url} target="_blank" rel="noreferrer">{t("catalog.photoCredit", { attribution: species.image_attribution, license: species.image_license_code })}</a>}</div></article>)}</div></section>; }
-export function SitesPanel({ api }: { api: ApiClient }) { const { t } = useTranslation(); const query = useQuery({ queryKey: ["sites"], queryFn: () => api.get<CatalogResponse>("/v1/sites") }); if (query.isLoading) return <LoadingGrid />; if (query.isError) return <ErrorState retry={() => void query.refetch()} />; return <section className="catalog-page"><div className="section-heading"><div><p className="eyebrow">{t("catalog.eyebrow")}</p><h2>{t("catalog.sitesTitle")}</h2></div></div><div className="site-grid">{query.data?.items.map((site) => <article className="site-card" key={site.site_id}><MapPinned aria-hidden="true" /><div><h3>{site.site_name}</h3><p>{site.region}</p></div></article>)}</div></section>; }
+export function SpeciesPanel({ api }: { api: ApiClient }) { const { i18n, t } = useTranslation(); const query = useQuery({ queryKey: ["species"], queryFn: () => api.get<CatalogResponse>("/v1/species") }); if (query.isLoading) return <LoadingGrid />; if (query.isError) return <ErrorState retry={() => void query.refetch()} />; return <section className="catalog-page"><div className="section-heading"><div><p className="eyebrow">{t("catalog.eyebrow")}</p><h2>{t("catalog.speciesTitle")}</h2></div></div><div className="species-grid">{query.data?.items.map((species) => <article className="species-card" key={species.species_id}>{species.image_url ? <img src={species.image_url} alt={(i18n.language.startsWith("es") ? species.image_alt_text_es : species.image_alt_text_en) ?? species.common_name} /> : <div className="image-fallback"><ImageOff /></div>}<div className="species-copy"><span>{species.iucn_category}</span><h3>{species.common_name}</h3><i>{species.scientific_name}</i>{species.image_attribution && <a href={species.image_license_url ?? undefined} target="_blank" rel="noreferrer">{t("catalog.photoCredit", { attribution: species.image_attribution, license: species.image_license_code })}</a>}</div></article>)}</div></section>; }
+export function SitesPanel({ api }: { api: ApiClient }) {
+  const { i18n, t } = useTranslation();
+  const query = useQuery({ queryKey: ["sites"], queryFn: () => api.get<SiteCatalogResponse>("/v1/sites") });
+
+  if (query.isLoading) return <LoadingGrid />;
+  if (query.isError) return <ErrorState retry={() => void query.refetch()} />;
+
+  return <section className="catalog-page">
+    <div className="section-heading"><div><p className="eyebrow">{t("catalog.eyebrow")}</p><h2>{t("catalog.sitesTitle")}</h2></div></div>
+    <div className="site-grid">
+      {query.data?.items.map((site) => <article className="species-card" key={site.site_id}>
+        {site.image_url ? (
+          <img src={site.image_url} alt={i18n.language.startsWith("es") ? site.image_alt_text_es ?? site.site_name : site.image_alt_text_en ?? site.site_name} />
+        ) : (
+          <div className="image-fallback" role="img" aria-label={t("catalog.siteImageFallback", { site: site.site_name })}><MapPinned aria-hidden="true" /></div>
+        )}
+        <div className="species-copy">
+          <span>{t("catalog.siteLabel")}</span>
+          <h3>{site.site_name}</h3>
+          <i>{site.region}</i>
+          {site.image_attribution && (site.image_license_url ? (
+            <a href={site.image_license_url} target="_blank" rel="noreferrer">{t("catalog.photoCredit", { attribution: site.image_attribution, license: site.image_license_code })}</a>
+          ) : (
+            <small className="photo-credit">{t("catalog.photoCredit", { attribution: site.image_attribution, license: site.image_license_code })}</small>
+          ))}
+        </div>
+      </article>)}
+    </div>
+  </section>;
+}
 export function ResearchersPanel({ api }: { api: ApiClient }) { const { t } = useTranslation(); const query = useQuery({ queryKey: ["researchers"], queryFn: () => api.get<ResearcherDirectoryResponse>("/v1/researchers") }); if (query.isLoading) return <LoadingGrid />; if (query.isError) return <ErrorState retry={() => void query.refetch()} />; return <section className="catalog-page"><div className="section-heading"><div><p className="eyebrow">{t("catalog.eyebrow")}</p><h2>{t("catalog.researchersTitle")}</h2></div></div><div className="researcher-grid">{query.data?.items.map((person) => <article className="researcher-card" key={person.researcher_id}><div className="avatar">{person.full_name.split(" ").map((part) => part[0]).join("").slice(0, 2)}</div><div><h3>{person.full_name}</h3><p>{person.role_title}</p><span className="level-pill"><BadgeInfo aria-hidden="true" />{t("profile.level", { level: person.accreditation_level })}</span></div></article>)}</div></section>; }
 function LoadingGrid() { return <div className="catalog-page"><div className="skeleton intro" /><div className="species-grid">{Array.from({ length: 6 }, (_, index) => <div className="skeleton species" key={index} />)}</div></div>; }
 function ErrorState({ retry }: { retry: () => void }) { const { t } = useTranslation(); return <section className="panel-state"><UsersRound aria-hidden="true" /><p>{t("catalog.error")}</p><button className="button secondary" type="button" onClick={retry}>{t("common.retry")}</button></section>; }

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import "./shared/i18n";
 import "./styles.css";
+import "./workspace-layout.css";
 import { App } from "./app/App";
 
 const queryClient = new QueryClient({
@@ -17,4 +18,3 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     </QueryClientProvider>
   </React.StrictMode>,
 );
-

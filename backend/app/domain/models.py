@@ -134,6 +134,12 @@ class Site:
     site_id: UUID
     site_name: str
     region: str
+    image_url: str | None = None
+    image_alt_text_es: str | None = None
+    image_alt_text_en: str | None = None
+    image_attribution: str | None = None
+    image_license_code: str | None = None
+    image_license_url: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

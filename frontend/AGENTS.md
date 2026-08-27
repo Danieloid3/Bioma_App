@@ -36,6 +36,8 @@ Mantener componentes pequeños y accesibles. Las features no deben importar deta
 
 Usar fondos marfil cálidos y neutros oscuros de contraste cuando sea necesario para WCAG; no sacrificar legibilidad por reproducir la imagen. Definir tokens CSS, no dispersar valores hexadecimales en componentes.
 
+El lienzo de las vistas de escritorio usa `public/organic-workspace-background.png` como ambientación detrás del contenido, con una capa marfil que preserva contraste. El selector de idioma vive únicamente en la barra lateral. Los listados de avistamientos deben comunicar con `:hover` y `:focus-visible` que abren su ficha.
+
 ### Estética y responsive
 
 - Escritorio: sidebar verde fija, cabecera ligera, métricas en tarjetas, contenido espacioso y sombras muy sutiles.

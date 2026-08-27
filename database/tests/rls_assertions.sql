@@ -17,6 +17,7 @@ DECLARE
     v_detail_denied INTEGER;
     v_detail_own INTEGER;
     v_history_image TEXT;
+    v_site_image TEXT;
     v_dashboard_visible BIGINT;
     v_dashboard_hidden BIGINT;
     v_query_vector VECTOR(1536) := (
@@ -71,6 +72,17 @@ BEGIN
     WHERE observation_reference = 'obs-5006';
     IF v_history_image IS NULL THEN
         RAISE EXCEPTION 'History failure: catalogue image was not returned for visible species';
+    END IF;
+
+    SELECT image.bio_display_url INTO v_site_image
+    FROM bio_sites AS site
+    JOIN bio_site_images AS image ON image.bio_site_id = site.bio_site_id
+    WHERE site.bio_site_name = 'Reserva El Ceibal'
+      AND site.bio_region = 'Bolívar'
+      AND image.bio_is_featured = true
+      AND image.bio_is_active = true;
+    IF v_site_image IS NULL THEN
+        RAISE EXCEPTION 'Catalogue failure: featured active image was not seeded for a site';
     END IF;
 
     SELECT visible_sightings INTO v_dashboard_visible FROM bio_fn_dashboard_summary();

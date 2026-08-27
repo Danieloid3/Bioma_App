@@ -30,7 +30,7 @@ Los conteos y la actividad no se calculan con privilegios de propietario ni se e
 
 ## Imágenes icónicas como catálogo curado
 
-Las fotos representativas viven en `bio_species_images`, no en `bio_species` ni en los avistamientos. La separación permite mantener licencia, atribución, idioma y reemplazos sin contaminar la taxonomía ni confundir una imagen institucional con evidencia de campo. Solo se expone una imagen destacada activa por especie, garantizada con un índice parcial.
+Las fotos representativas viven en `bio_species_images` y `bio_site_images`, no en las entidades científicas principales ni en los avistamientos. La separación permite mantener licencia, atribución, idioma y reemplazos sin contaminar la taxonomía ni confundir una imagen institucional con evidencia de campo. Solo se expone una imagen destacada activa por especie o sitio, garantizada con un índice parcial. Para los sitios se usan paisajes públicos representativos: nunca rutas, coordenadas ni evidencia de un registro.
 
 ## Ficha individual con denegación uniforme
 

@@ -45,9 +45,41 @@ export type SightingDetail = Sighting & {
 };
 
 export type SightingPage = { items: Sighting[] };
-export type SpeciesImage = { image_url?: string; image_alt_text_es?: string; image_alt_text_en?: string; image_attribution?: string; image_license_code?: string; image_license_url?: string };
-export type CatalogItem = { species_id?: string; site_id?: string; common_name?: string; site_name?: string; scientific_name?: string; region?: string; iucn_category?: string } & SpeciesImage;
-export type CatalogResponse = { items: CatalogItem[] };
+export type CuratedImage = {
+  image_url: string | null;
+  image_alt_text_es: string | null;
+  image_alt_text_en: string | null;
+  image_attribution: string | null;
+  image_license_code: string | null;
+  image_license_url: string | null;
+};
+
+export type SpeciesCatalogItem = {
+  species_id: string;
+  common_name: string;
+  scientific_name: string;
+  iucn_category: string;
+} & CuratedImage;
+
+export type SiteCatalogItem = {
+  site_id: string;
+  site_name: string;
+  region: string;
+} & CuratedImage;
+
+/** Flexible catalogue shape used only by sighting filter controls. */
+export type CatalogItem = {
+  species_id?: string;
+  site_id?: string;
+  common_name?: string;
+  site_name?: string;
+  scientific_name?: string;
+  region?: string;
+  iucn_category?: string;
+} & CuratedImage;
+
+export type CatalogResponse = { items: SpeciesCatalogItem[] };
+export type SiteCatalogResponse = { items: SiteCatalogItem[] };
 export type ResearcherDirectoryItem = { researcher_id: string; full_name: string; role_title: string; accreditation_level: number };
 export type ResearcherDirectoryResponse = { items: ResearcherDirectoryItem[] };
 

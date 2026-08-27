@@ -46,7 +46,7 @@ Los embeddings se procesan en el worker independiente `app/workers/embeddings.py
 
 ## Dashboard y catálogo
 
-El dashboard llama a funciones `SECURITY INVOKER` que agregan únicamente filas de `bio_sightings` visibles bajo RLS. La actividad une creación y revisiones, y `bio_sighting_revisions` posee su propia política RLS antes de poder leerse. Las imágenes de especie son catálogo curado en `bio_species_images`: conservan fuente, licencia y textos alternativos; no sustituyen ni comparten el modelo de evidencias de avistamiento.
+El dashboard llama a funciones `SECURITY INVOKER` que agregan únicamente filas de `bio_sightings` visibles bajo RLS. La actividad une creación y revisiones, y `bio_sighting_revisions` posee su propia política RLS antes de poder leerse. Las imágenes de especie y sitio son catálogos curados en `bio_species_images` y `bio_site_images`: conservan fuente, licencia y textos alternativos; no sustituyen ni comparten el modelo de evidencias de avistamiento.
 
 La ficha de un avistamiento se obtiene con `bio_fn_get_sighting_detail`, también `SECURITY INVOKER`. El API devuelve 404 para una fila inexistente o no visible y evita que el cliente pueda distinguir ambos escenarios.
 
