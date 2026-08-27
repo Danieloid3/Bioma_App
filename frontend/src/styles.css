@@ -67,7 +67,13 @@
   flex: 1;
   gap: 1.5rem;
   text-align: center;
-  transform: translateY(8%);
+  transform: translateY(0);
+}
+
+@media (min-width: 901px) {
+  .hero-center-art {
+    transform: translateY(22%);
+  }
 }
 .hero-bird-large {
   width: min(22rem, 78%);

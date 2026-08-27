@@ -13,7 +13,6 @@ export function LoginPage({ onLogin }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
-  const [showDemo, setShowDemo] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -30,11 +29,6 @@ export function LoginPage({ onLogin }: Props) {
 
   const toggleLanguage = () => {
     i18n.changeLanguage(i18n.language === "es" ? "en" : "es");
-  };
-
-  const loadDemo = (demoEmail: string, demoPass: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
   };
 
   return (
@@ -113,23 +107,6 @@ export function LoginPage({ onLogin }: Props) {
               {submitting ? t("common.loading", "Cargando...") : t("login.submit", "Iniciar sesión")}
         </button>
 
-            <div className="login-divider">
-              <span>{t("login.or", "o")}</span>
-            </div>
-
-            {import.meta.env.DEV && (
-              <div className="demo-accounts-wrapper">
-                <button type="button" className="button text demo-toggle" onClick={() => setShowDemo(!showDemo)}>
-                  {showDemo ? "Ocultar cuentas de prueba" : "Ver cuentas de prueba"}
-                </button>
-                {showDemo && (
-                  <div className="demo-accounts">
-                    <button type="button" onClick={() => loadDemo("ana@bioma.app", "bioma2024")} className="demo-badge">Ana (Investigadora)</button>
-                    <button type="button" onClick={() => loadDemo("carlos@bioma.app", "bioma2024")} className="demo-badge">Carlos (Admin)</button>
-                  </div>
-                )}
-              </div>
-            )}
           </form>
         </div>
       </section>
