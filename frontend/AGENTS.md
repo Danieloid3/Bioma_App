@@ -59,3 +59,10 @@ Usar fondos marfil cálidos y neutros oscuros de contraste cuando sea necesario 
 - Usar TanStack Query para cache, keyset/infinite loading y mutaciones; invalidar por evento SSE sin incluir datos sensibles en el evento.
 - Verificar navegación por teclado, foco, contraste, etiquetas y vista móvil antes de commit.
 - Actualizar este archivo al hacer commit cuando cambie la estética, componentes compartidos, estructura, contratos API, dependencias o reglas de seguridad.
+
+## Estado implementado
+
+- `App` conserva únicamente el access token en memoria y recupera sesión con la cookie HttpOnly al iniciar.
+- `shared/api/client.ts` es el único acceso HTTP; adjunta bearer, cookies y `X-Correlation-ID`, y convierte el contrato de error del API en `ApiError`.
+- `SightingsPanel` usa TanStack Query e historial por keyset; `CopilotPanel` muestra únicamente las fuentes retornadas por el API.
+- La navegación actual no usa un router externo: las vistas dashboard, avistamientos, búsqueda, copiloto y perfil se componen dentro de `App` para este alcance.

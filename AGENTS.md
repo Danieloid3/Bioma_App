@@ -35,6 +35,7 @@ La arquitectura detallada vive en `ARCHITECTURE.md`; decisiones justificadas en 
 - Añadir pruebas de integración contra PostgreSQL real para cada cambio de autorización o migración relevante.
 - Mantener OpenAPI, README, ARCHITECTURE y DECISIONS alineados con el código.
 - Estado backend: cuando RLS no recupera fuentes para una consulta RAG, responder con una negativa determinista y auditable sin invocar al LLM; conservar pruebas unitarias y pruebas SQL RLS/RAG para este flujo.
+- Estado frontend: las vistas consumen el contrato de API mediante un cliente único, con bearer solo en memoria, refresh cookie HttpOnly, TanStack Query e i18n; el dashboard no inventa métricas que el API no expone.
 - Al realizar un commit, actualizar este archivo y el `AGENTS.md` de la capa afectada cuando cambie contexto, arquitectura, reglas, decisiones, comandos, estructura o estado del proyecto. No hacer cambios cosméticos solo para forzar una actualización.
 - Antes de un push: compilar backend y frontend, ejecutar pruebas de seguridad y comprobar `docker compose config`.
 
