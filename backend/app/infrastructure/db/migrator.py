@@ -1,4 +1,4 @@
-﻿import hashlib
+import hashlib
 import logging
 from pathlib import Path
 
@@ -35,10 +35,11 @@ async def run_migrations(connection: asyncpg.Connection) -> None:
 
     for file_path in migration_files:
         filename = file_path.name
-        content = file_path.read_text(encoding="utf-8")
+        content = file_path.read_text(encoding="utf-8-sig").lstrip("\ufeff")
         clean_content = content.replace(":'bio_app_password'", "'bio_app_dev_password_change_me'")
         clean_content = clean_content.replace(":bio_app_password", "'bio_app_dev_password_change_me'")
         checksum = hashlib.sha256(content.encode("utf-8")).hexdigest()
+
 
         if filename in applied:
             continue
