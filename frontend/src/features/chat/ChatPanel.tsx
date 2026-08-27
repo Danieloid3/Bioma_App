@@ -1,4 +1,4 @@
-import { FormEvent, Fragment, KeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, Fragment, KeyboardEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Activity,
@@ -66,17 +66,16 @@ type Message = {
 };
 
 
-type CopilotReply = {
-  answer: string;
-  model_name: string;
-  sources: Citation[];
-};
-
 type DirectoryResponse = {
   items: Researcher[];
 };
 
 type ChannelMember = Researcher;
+
+type ChatRealtimeEvent = {
+  type: "channel.created" | "message.created" | "message.updated" | "message.deleted";
+  channel_id: string;
+};
 
 function formatInlineContent(
   text: string,
@@ -303,6 +302,22 @@ export function ChatPanel({
 
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const transcriptRef = useRef<HTMLDivElement>(null);
+  const shouldStickToBottomRef = useRef(true);
+
+  const refreshChannels = useCallback(async () => {
+    const channelsData = await api.get<Channel[]>("/v1/chat/channels");
+    setChannels(channelsData);
+    setActiveChannelId((current) => current ?? channelsData[0]?.channel_id ?? null);
+  }, [api]);
+
+  const refreshActiveMessages = useCallback(async (channelId: string) => {
+    const items = await api.get<Message[]>(`/v1/chat/channels/${channelId}/messages`);
+    setMessages([...items].reverse().map((message) => ({ ...message, status: "sent" })));
+    setChannels((previous) => previous.map((channel) =>
+      channel.channel_id === channelId ? { ...channel, unread_count: 0 } : channel
+    ));
+  }, [api]);
 
   // Consulta de consumo del copiloto para el modal de la tuerquita
   const usageQuery = useQuery({
@@ -359,46 +374,80 @@ export function ChatPanel({
     };
   }, [api, researcher.researcher_id, t, activeChannelId]);
 
-  // Cargar y sincronizar mensajes del canal activo con polling reactivo
+  // La lectura por REST conserva el cursor, marca leído y aplica RLS.
   useEffect(() => {
     if (!activeChannelId) {
       setMessages([]);
       return;
     }
+    const channelId = activeChannelId;
 
     let isMounted = true;
     async function fetchMessages() {
       try {
-        const items = await api.get<Message[]>(
-          `/v1/chat/channels/${activeChannelId}/messages`
-        );
         if (!isMounted) return;
-        setMessages(
-          [...items].reverse().map((m) => ({ ...m, status: "sent" }))
-        );
-        setChannels((previous) => previous.map((channel) =>
-          channel.channel_id === activeChannelId ? { ...channel, unread_count: 0 } : channel
-        ));
+        await refreshActiveMessages(channelId);
       } catch {
-        // Silencioso en polling
+        // La siguiente invalidación o reconexión reintentará la sincronización.
       }
     }
 
     void fetchMessages();
-    const interval = setInterval(() => {
-      void fetchMessages();
-    }, 4000);
 
     return () => {
       isMounted = false;
-      clearInterval(interval);
     };
-  }, [api, activeChannelId]);
+  }, [activeChannelId, refreshActiveMessages]);
 
-  // Scroll automático al final al recibir nuevos mensajes
+  // SSE no lleva mensajes: solo invalida y los datos se vuelven a leer por REST + RLS.
   useEffect(() => {
-    transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const controller = new AbortController();
+    let retryTimer: number | undefined;
+    let stopped = false;
+
+    const reconnect = () => {
+      if (!stopped) retryTimer = window.setTimeout(connect, 1500);
+    };
+    const connect = async () => {
+      try {
+        await api.stream("/v1/chat/events", (event) => {
+          if (event.event !== "chat") return;
+          const change = JSON.parse(event.data) as ChatRealtimeEvent;
+          if (change.type === "channel.created") {
+            void refreshChannels();
+            return;
+          }
+          if (change.channel_id === activeChannelId) {
+            void refreshActiveMessages(change.channel_id);
+          } else {
+            void refreshChannels();
+          }
+        }, controller.signal);
+        reconnect();
+      } catch {
+        if (!controller.signal.aborted) reconnect();
+      }
+    };
+    void connect();
+    return () => {
+      stopped = true;
+      controller.abort();
+      if (retryTimer) window.clearTimeout(retryTimer);
+    };
+  }, [activeChannelId, api, refreshActiveMessages, refreshChannels]);
+
+  // No interrumpir a quien está leyendo mensajes anteriores.
+  useEffect(() => {
+    if (shouldStickToBottomRef.current) {
+      transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages, isCopilotThinking]);
+
+  function handleTranscriptScroll() {
+    const transcript = transcriptRef.current;
+    if (!transcript) return;
+    shouldStickToBottomRef.current = transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight < 80;
+  }
 
   // Encontrar el contacto correspondiente para un canal directo
   const activeChannel = useMemo(() => {
@@ -545,27 +594,12 @@ export function ChatPanel({
       if (isCopilotMention) {
         setIsCopilotThinking(true);
         const question = text.replace(/^@copilot\b\s*/i, "");
-        const copilotResponse = await api.post<CopilotReply>(
+        await api.post(
           `/v1/chat/channels/${activeChannelId}/copilot`,
           { question: question || text }
         );
-
-        const copilotMsg: Message = {
-          message_id: crypto.randomUUID(),
-          channel_id: activeChannelId,
-          author_id: null,
-          author_name: "Copiloto Bioma",
-          sender_role: "copilot",
-          message_text: copilotResponse.answer,
-          is_edited: false,
-          is_deleted: false,
-          created_at: new Date().toISOString(),
-          read_count: 1,
-          status: "sent",
-          citations: copilotResponse.sources || [],
-        };
-
-        setMessages((prev) => [...prev, copilotMsg]);
+        // La respuesta persistida llega por SSE; el historial evita duplicados.
+        await refreshActiveMessages(activeChannelId);
       }
     } catch {
       setMessages((prev) =>
@@ -773,7 +807,7 @@ export function ChatPanel({
         </header>
 
         {/* Hilo de mensajes */}
-        <div className={styles.transcript}>
+        <div ref={transcriptRef} className={styles.transcript} onScroll={handleTranscriptScroll}>
           {!activeChannelId && (
             <div className={styles.emptyChat}>
               <MessageCircle aria-hidden="true" />

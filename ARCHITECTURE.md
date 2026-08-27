@@ -44,6 +44,8 @@ El módulo `/v1/chat` crea canales directos o grupales, sus membresías, mensaje
 
 `bio_chat_channel_members` determina RLS para canal, mensaje, búsqueda, historial y recuperación vectorial. Los cursores de historial usan `(bio_created_at, bio_chat_message_id)`. Cuando el copiloto es consultado dentro de una conversación, `bio_fn_chat_shared_sightings()` recupera exclusivamente los avistamientos accesibles simultáneamente por todos los miembros del canal (intersección de acreditaciones RLS y autorías). Las citas persistidas usan el contrato canónico `source_type`, `source_reference` y `source_id`, y la función de escritura vuelve a verificar esa visibilidad compartida.
 
+La sincronización en tiempo real usa SSE autenticado en `GET /v1/chat/events` y Redis Pub/Sub solamente como señal efímera entre réplicas. Un evento contiene solo `type` y `channel_id`: nunca texto, autor, citas ni datos de avistamientos. Antes de emitirlo, la API abre una transacción del actor y revalida la membresía mediante la misma función protegida por RLS. Tras recibirlo, el cliente vuelve a solicitar por REST el canal o historial afectado; esas respuestas siguen siendo la fuente de verdad y marcan como leído únicamente el canal abierto. Las mutaciones publican la señal tras confirmar la transacción PostgreSQL, con heartbeat y reconexión del cliente.
+
 ## Gestión de investigadores y procedimientos almacenados
 
 La administración de usuarios se centraliza en procedimientos almacenados PostgreSQL definidos en `002_functions_and_triggers.sql`:
