@@ -34,6 +34,7 @@ La arquitectura detallada vive en `ARCHITECTURE.md`; decisiones justificadas en 
 - Mantener Clean Architecture y SOLID: dominio independiente de frameworks, drivers, HTTP y proveedores IA.
 - Añadir pruebas de integración contra PostgreSQL real para cada cambio de autorización o migración relevante.
 - Mantener OpenAPI, README, ARCHITECTURE y DECISIONS alineados con el código.
+- Estado backend: cuando RLS no recupera fuentes para una consulta RAG, responder con una negativa determinista y auditable sin invocar al LLM; conservar pruebas unitarias y pruebas SQL RLS/RAG para este flujo.
 - Al realizar un commit, actualizar este archivo y el `AGENTS.md` de la capa afectada cuando cambie contexto, arquitectura, reglas, decisiones, comandos, estructura o estado del proyecto. No hacer cambios cosméticos solo para forzar una actualización.
 - Antes de un push: compilar backend y frontend, ejecutar pruebas de seguridad y comprobar `docker compose config`.
 
@@ -46,4 +47,3 @@ docker compose down
 ```
 
 Los puertos locales por defecto están en `.env.example`: PostgreSQL `55432`, API `8001` y web `5174`, para no interferir con otros proyectos de la máquina.
-

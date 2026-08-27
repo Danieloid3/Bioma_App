@@ -35,4 +35,6 @@ docker compose --profile test run --rm database-tests
 
 ## Estado actual
 
-La base, infraestructura de Docker y esqueletos de API/web están creados. Faltan los casos de uso de autenticación, pantalla de mapa, worker de embeddings, endpoints del copiloto y las pruebas de integración finales.
+El monorepo contiene la base de datos, API FastAPI y cliente React. El backend incluye autenticación JWT con refresh rotativo, RLS por acreditación/autoría, CRUD de avistamientos con revisiones, búsqueda textual y RAG con pgvector/LangChain. Redis aplica rate limiting y el worker de embeddings se ejecuta con el perfil `worker`.
+
+Las pruebas unitarias y las aserciones RLS/RAG contra PostgreSQL real están automatizadas. Las evidencias audiovisuales y el transporte de tiempo real hacia la interfaz quedan pendientes.

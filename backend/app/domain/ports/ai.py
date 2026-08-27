@@ -4,7 +4,7 @@ from app.domain.models import CopilotAnswer, CopilotSource
 
 
 class EmbeddingProvider(Protocol):
-    model_name: str
+    embedding_model_name: str
 
     async def embed_query(self, text: str) -> list[float]: ...
 
@@ -23,4 +23,3 @@ class CopilotProvider(Protocol):
         sources: Sequence[CopilotSource],
         system_prompt: str,
     ) -> CopilotAnswer: ...
-

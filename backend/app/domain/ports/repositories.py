@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Protocol, Sequence
 from uuid import UUID
 
-from app.domain.models import CopilotSource, SightingHistoryItem
+from app.domain.models import CopilotSource, SightingHistoryItem, SightingSearchItem, Site, Species
 
 
 class SightingRepository(Protocol):
@@ -29,9 +29,41 @@ class SightingRepository(Protocol):
         page_size: int,
     ) -> list[SightingHistoryItem]: ...
 
-    async def retrieve_context(self, embedding: Sequence[float], limit: int) -> list[CopilotSource]: ...
+    async def retrieve_context(
+        self, embedding: Sequence[float], limit: int
+    ) -> list[CopilotSource]: ...
 
-    async def store_embedding(self, sighting_id: UUID, embedding: Sequence[float], model_name: str) -> None: ...
+    async def store_embedding(
+        self, sighting_id: UUID, embedding: Sequence[float], model_name: str
+    ) -> None: ...
+
+    async def search(
+        self,
+        *,
+        search_term: str,
+        cursor_observed_at: datetime | None,
+        cursor_sighting_id: UUID | None,
+        page_size: int,
+    ) -> list[SightingSearchItem]: ...
+
+    async def edit(
+        self,
+        *,
+        sighting_id: UUID,
+        field_notes: str | None,
+        classification_level: int | None,
+        latitude: float | None,
+        longitude: float | None,
+        change_reason: str,
+    ) -> None: ...
+
+    async def void(self, *, sighting_id: UUID, reason: str) -> None: ...
+
+
+class CatalogRepository(Protocol):
+    async def list_species(self) -> list[Species]: ...
+
+    async def list_sites(self) -> list[Site]: ...
 
 
 class CopilotAuditRepository(Protocol):
@@ -47,3 +79,8 @@ class CopilotAuditRepository(Protocol):
         sources: Sequence[CopilotSource],
     ) -> UUID: ...
 
+
+class CopilotContextRepository(Protocol):
+    async def retrieve_context(
+        self, embedding: Sequence[float], limit: int
+    ) -> list[CopilotSource]: ...

@@ -25,3 +25,10 @@ __pycache__/
 node_modules/
 dist/
 coverage/
+# En el monorepo, la base de datos y sus documentos viven en las rutas raíz.
+/backend/database/
+/backend/docs/
+/backend/seed.json
+/backend/modelo_entidad_relacion.mmd
+/backend/modelo_entidad_relacion.png
+/backend/proyecto-integrador-bioma.md

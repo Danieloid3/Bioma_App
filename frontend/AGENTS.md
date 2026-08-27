@@ -2,7 +2,7 @@
 
 ## Misión
 
-El frontend es una aplicación React/TypeScript para exploración de avistamientos, copiloto y perfil. Debe ser sobrio, cálido y científico; la referencia visual es un dashboard natural con navegación lateral verde, tarjetas marfil, acentos dorados y una versión móvil clara.
+El frontend es una aplicación React/TypeScript para exploración de avistamientos, copiloto y perfil. Debe ser sobrio, cálido y científico; la referencia visual es un dashboard natural con navegación lateral verde, tarjetas marfil, acentos dorados y una versión móvil clara. Este repositorio se ejecuta de forma independiente y consume el API configurado por `VITE_API_BASE_URL`.
 
 El cliente representa permisos que ya resolvió la API. Nunca calcula acreditaciones, deofusca coordenadas, conserva registros sensibles en caché compartida ni intenta consultar datos que la API no entregó.
 
@@ -59,4 +59,3 @@ Usar fondos marfil cálidos y neutros oscuros de contraste cuando sea necesario 
 - Usar TanStack Query para cache, keyset/infinite loading y mutaciones; invalidar por evento SSE sin incluir datos sensibles en el evento.
 - Verificar navegación por teclado, foco, contraste, etiquetas y vista móvil antes de commit.
 - Actualizar este archivo al hacer commit cuando cambie la estética, componentes compartidos, estructura, contratos API, dependencias o reglas de seguridad.
-
