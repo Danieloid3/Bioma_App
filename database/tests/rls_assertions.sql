@@ -12,6 +12,8 @@ DECLARE
     v_own_confidential INTEGER;
     v_rag_denied INTEGER;
     v_rag_own INTEGER;
+    v_dashboard_visible BIGINT;
+    v_dashboard_hidden BIGINT;
     v_query_vector VECTOR(1536) := ('[' || array_to_string(array_fill(0::REAL, ARRAY[1536]), ',') || ']')::VECTOR;
 BEGIN
     SELECT COUNT(*) INTO v_denied_confidential
@@ -41,8 +43,15 @@ BEGIN
     IF v_rag_own <> 1 THEN
         RAISE EXCEPTION 'RAG failure: own confidential context was not recovered';
     END IF;
+
+    SELECT visible_sightings INTO v_dashboard_visible FROM bio_fn_dashboard_summary();
+    SELECT COUNT(*) INTO v_dashboard_hidden
+    FROM bio_sightings
+    WHERE bio_observation_reference = 'obs-5001';
+    IF v_dashboard_visible < 1 OR v_dashboard_hidden <> 0 THEN
+        RAISE EXCEPTION 'Dashboard failure: aggregate did not preserve RLS visibility';
+    END IF;
 END;
 $$;
 
 ROLLBACK;
-

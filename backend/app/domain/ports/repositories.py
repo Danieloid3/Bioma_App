@@ -2,7 +2,17 @@ from datetime import datetime
 from typing import Protocol, Sequence
 from uuid import UUID
 
-from app.domain.models import CopilotSource, SightingHistoryItem, SightingSearchItem, Site, Species
+from app.domain.models import (
+    ActivityItem,
+    ClassificationCount,
+    CopilotSource,
+    DashboardSummary,
+    SightingHistoryItem,
+    SightingSearchItem,
+    Site,
+    Species,
+    ResearcherDirectoryItem,
+)
 
 
 class SightingRepository(Protocol):
@@ -64,6 +74,16 @@ class CatalogRepository(Protocol):
     async def list_species(self) -> list[Species]: ...
 
     async def list_sites(self) -> list[Site]: ...
+
+    async def list_researchers(self) -> list[ResearcherDirectoryItem]: ...
+
+
+class DashboardRepository(Protocol):
+    async def summary(self) -> DashboardSummary: ...
+
+    async def classification(self) -> list[ClassificationCount]: ...
+
+    async def activity(self, limit: int) -> list[ActivityItem]: ...
 
 
 class CopilotAuditRepository(Protocol):

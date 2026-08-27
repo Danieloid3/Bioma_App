@@ -1,15 +1,18 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { BarChart3, Bird, Bot, House, Languages, Menu, Search, Settings, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Bird, Bot, FileBarChart, House, Languages, Leaf, MapPin, Menu, Search, Settings, UsersRound, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { AuthenticationResponse, Researcher } from "../domain/contracts";
 import { LoginPage } from "../features/auth/LoginPage";
+import { ResearchersPanel, SitesPanel, SpeciesPanel } from "../features/catalog/CatalogPanels";
 import { CopilotPanel } from "../features/copilot/CopilotPanel";
+import { DashboardPanel } from "../features/dashboard/DashboardPanel";
 import { ProfilePanel } from "../features/profile/ProfilePanel";
+import { ReportsPanel } from "../features/reports/ReportsPanel";
 import { SightingsPanel } from "../features/sightings/SightingsPanel";
 import { ApiClient } from "../shared/api/client";
 
-type View = "dashboard" | "sightings" | "search" | "copilot" | "profile";
+type View = "dashboard" | "sightings" | "species" | "sites" | "researchers" | "search" | "copilot" | "reports" | "profile";
 
 export function App() {
   const { i18n, t } = useTranslation();
@@ -41,16 +44,24 @@ export function App() {
   async function logout() { try { await api.post<void>("/v1/auth/logout"); } finally { setToken(null); setResearcher(null); setView("dashboard"); } }
   if (checkingSession) return <main className="startup"><span className="leaf-loader" />{t("common.loading")}</main>;
   if (!researcher) return <LoginPage onLogin={login} />;
-  const nav: { view: View; icon: typeof House; label: string }[] = [{ view: "dashboard", icon: House, label: t("nav.dashboard") }, { view: "sightings", icon: Bird, label: t("nav.sightings") }, { view: "search", icon: Search, label: t("nav.search") }, { view: "copilot", icon: Bot, label: t("nav.copilot") }, { view: "profile", icon: Settings, label: t("nav.profile") }];
+  const nav: { view: View; icon: typeof House; label: string }[] = [
+    { view: "dashboard", icon: House, label: t("nav.dashboard") }, { view: "sightings", icon: Bird, label: t("nav.sightings") },
+    { view: "species", icon: Leaf, label: t("nav.species") }, { view: "sites", icon: MapPin, label: t("nav.sites") },
+    { view: "researchers", icon: UsersRound, label: t("nav.researchers") }, { view: "search", icon: Search, label: t("nav.search") },
+    { view: "copilot", icon: Bot, label: t("nav.copilot") }, { view: "reports", icon: FileBarChart, label: t("nav.reports") },
+    { view: "profile", icon: Settings, label: t("nav.profile") },
+  ];
   const selectView = (value: View) => { setView(value); setMenuOpen(false); };
   return <main className="product-shell"><aside className={`sidebar ${menuOpen ? "open" : ""}`}><div className="brand-mark"><Bird aria-hidden="true" /><span>bioma</span></div><div className="sidebar-profile"><div className="avatar">{researcher.full_name.split(" ").map((part) => part[0]).join("").slice(0, 2)}</div><div><strong>{researcher.full_name}</strong><span>{researcher.role_title}</span></div></div><nav aria-label={t("nav.label")}>{nav.map(({ view: itemView, icon: Icon, label }) => <button className={view === itemView ? "nav-item active" : "nav-item"} type="button" key={itemView} onClick={() => selectView(itemView)}><Icon aria-hidden="true" />{label}</button>)}</nav><button className="language-switch" type="button" onClick={() => void i18n.changeLanguage(nextLanguage)}><Languages aria-hidden="true" />{t("app.changeLanguage")}</button></aside><section className="main-content"><header className="topbar"><button className="menu-toggle" type="button" aria-label={t("nav.menu")} onClick={() => setMenuOpen((value) => !value)}>{menuOpen ? <X /> : <Menu />}</button><div><p className="eyebrow">{t("app.greeting", { name: researcher.full_name })}</p><h1>{t(`views.${view}.title`)}</h1></div><button className="language-desktop" type="button" onClick={() => void i18n.changeLanguage(nextLanguage)}>{t("app.changeLanguage")}</button></header><AppView view={view} api={api} researcher={researcher} onLogout={() => void logout()} /><nav className="mobile-nav" aria-label={t("nav.label")}>{nav.slice(0, 4).map(({ view: itemView, icon: Icon, label }) => <button key={itemView} className={view === itemView ? "active" : ""} type="button" onClick={() => selectView(itemView)}><Icon aria-hidden="true" /><span>{label}</span></button>)}</nav></section></main>;
 }
 
 function AppView({ view, api, researcher, onLogout }: { view: View; api: ApiClient; researcher: Researcher; onLogout: () => void }) {
-  const { t } = useTranslation();
   if (view === "sightings" || view === "search") return <SightingsPanel api={api} />;
+  if (view === "species") return <SpeciesPanel api={api} />;
+  if (view === "sites") return <SitesPanel api={api} />;
+  if (view === "researchers") return <ResearchersPanel api={api} />;
   if (view === "copilot") return <div className="single-column"><CopilotPanel api={api} /></div>;
   if (view === "profile") return <div className="single-column"><ProfilePanel researcher={researcher} onLogout={onLogout} /></div>;
-  return <div className="dashboard"><section className="dashboard-intro"><div><p>{t("dashboard.subtitle")}</p></div><span className="date-chip">{new Intl.DateTimeFormat(undefined, { dateStyle: "long" }).format(new Date())}</span></section><section className="metric-grid"><Metric icon={<Bird />} label={t("dashboard.visible")} value={t("dashboard.live")} /><Metric icon={<BarChart3 />} label={t("dashboard.catalog")} value={t("dashboard.realData")} /><Metric icon={<Bot />} label={t("dashboard.copilot")} value={t("dashboard.ready")} /></section><section className="dashboard-grid"><SightingsPanel api={api} compact /><CopilotPanel api={api} /></section></div>;
+  if (view === "reports") return <ReportsPanel api={api} />;
+  return <DashboardPanel api={api} />;
 }
-function Metric({ icon, label, value }: { icon: ReactNode; label: string; value: string }) { return <article className="metric-card"><span className="metric-icon">{icon}</span><div><p>{label}</p><strong>{value}</strong></div></article>; }

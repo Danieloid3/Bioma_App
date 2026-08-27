@@ -3,7 +3,7 @@ from typing import Annotated
 import asyncpg
 from fastapi import APIRouter, Depends
 
-from app.application.use_cases.catalog import ListSites, ListSpecies
+from app.application.use_cases.catalog import ListResearchers, ListSites, ListSpecies
 from app.domain.models import Actor
 from app.infrastructure.db.repositories import PostgresCatalogRepository
 from app.presentation.api.dependencies import get_actor_connection
@@ -23,3 +23,9 @@ async def list_species(connection_dependency: ConnectionDependency) -> dict[str,
 async def list_sites(connection_dependency: ConnectionDependency) -> dict[str, object]:
     _, connection = connection_dependency
     return {"items": await ListSites(PostgresCatalogRepository(connection)).execute()}
+
+
+@router.get("/v1/researchers", responses=COMMON_ERROR_RESPONSES)
+async def list_researchers(connection_dependency: ConnectionDependency) -> dict[str, object]:
+    _, connection = connection_dependency
+    return {"items": await ListResearchers(PostgresCatalogRepository(connection)).execute()}

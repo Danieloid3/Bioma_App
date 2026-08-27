@@ -24,6 +24,14 @@ Cuando RLS no devuelve fuentes, Bioma responde de forma determinista que no disp
 
 Redis permite aplicar el límite entre réplicas. Las cuentas de login se representan con HMAC, no con el correo en claro; las operaciones atómicas devuelven `429` y `Retry-After`.
 
+## Dashboard filtrado y revisiones protegidas
+
+Los conteos y la actividad no se calculan con privilegios de propietario ni se entregan como datos globales: sus funciones parten de `bio_sightings` dentro de la transacción del actor. Como una revisión conserva notas y coordenadas previas, también tiene RLS y solo se puede leer al poder ver su avistamiento actual.
+
+## Imágenes icónicas como catálogo curado
+
+Las fotos representativas viven en `bio_species_images`, no en `bio_species` ni en los avistamientos. La separación permite mantener licencia, atribución, idioma y reemplazos sin contaminar la taxonomía ni confundir una imagen institucional con evidencia de campo. Solo se expone una imagen destacada activa por especie, garantizada con un índice parcial.
+
 ## Pendientes aceptados
 
 Las evidencias audiovisuales y la entrega en tiempo real al frontend quedan fuera de este cierre de backend. PostgreSQL ya publica eventos `pg_notify`; el transporte WebSocket/SSE se decidirá durante la integración frontend.

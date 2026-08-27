@@ -6,9 +6,13 @@ import asyncpg
 
 from app.domain.errors import InvalidRefreshToken, RefreshTokenReuseDetected
 from app.domain.models import (
+    ActivityItem,
     Actor,
+    ClassificationCount,
     CopilotSource,
+    DashboardSummary,
     LoginResearcher,
+    ResearcherDirectoryItem,
     SightingHistoryItem,
     SightingSearchItem,
     Site,
@@ -174,9 +178,14 @@ class PostgresCatalogRepository:
     async def list_species(self) -> list[Species]:
         rows = await self._connection.fetch(
             """
-            SELECT bio_species_id, bio_common_name, bio_scientific_name, bio_iucn_category
-            FROM bio_species
-            ORDER BY bio_common_name, bio_species_id
+            SELECT sp.bio_species_id, sp.bio_common_name, sp.bio_scientific_name, sp.bio_iucn_category,
+                   image.bio_display_url, image.bio_alt_text_es, image.bio_alt_text_en,
+                   image.bio_attribution, image.bio_license_code, image.bio_license_url
+            FROM bio_species AS sp
+            LEFT JOIN bio_species_images AS image
+              ON image.bio_species_id = sp.bio_species_id
+             AND image.bio_is_featured = true AND image.bio_is_active = true
+            ORDER BY sp.bio_common_name, sp.bio_species_id
             """
         )
         return [
@@ -185,6 +194,12 @@ class PostgresCatalogRepository:
                 common_name=row["bio_common_name"],
                 scientific_name=row["bio_scientific_name"],
                 iucn_category=row["bio_iucn_category"],
+                image_url=row["bio_display_url"],
+                image_alt_text_es=row["bio_alt_text_es"],
+                image_alt_text_en=row["bio_alt_text_en"],
+                image_attribution=row["bio_attribution"],
+                image_license_code=row["bio_license_code"],
+                image_license_url=row["bio_license_url"],
             )
             for row in rows
         ]
@@ -199,6 +214,49 @@ class PostgresCatalogRepository:
                 site_id=row["bio_site_id"],
                 site_name=row["bio_site_name"],
                 region=row["bio_region"],
+            )
+            for row in rows
+        ]
+
+    async def list_researchers(self) -> list[ResearcherDirectoryItem]:
+        rows = await self._connection.fetch("SELECT * FROM bio_fn_researcher_directory()")
+        return [
+            ResearcherDirectoryItem(
+                researcher_id=row["researcher_id"],
+                full_name=row["full_name"],
+                role_title=row["role_title"],
+                accreditation_level=row["accreditation_level"],
+            )
+            for row in rows
+        ]
+
+
+class PostgresDashboardRepository:
+    def __init__(self, connection: asyncpg.Connection) -> None:
+        self._connection = connection
+
+    async def summary(self) -> DashboardSummary:
+        row = await self._connection.fetchrow("SELECT * FROM bio_fn_dashboard_summary()")
+        if row is None:  # Defensive; the aggregate always returns a row.
+            return DashboardSummary(0, 0, 0, 0)
+        return DashboardSummary(
+            visible_sightings=row["visible_sightings"],
+            registered_species=row["registered_species"],
+            monitored_sites=row["monitored_sites"],
+            field_notes=row["field_notes"],
+        )
+
+    async def classification(self) -> list[ClassificationCount]:
+        rows = await self._connection.fetch("SELECT * FROM bio_fn_dashboard_classification()")
+        return [ClassificationCount(row["classification_level"], row["total"]) for row in rows]
+
+    async def activity(self, limit: int) -> list[ActivityItem]:
+        rows = await self._connection.fetch("SELECT * FROM bio_fn_dashboard_activity($1)", limit)
+        return [
+            ActivityItem(
+                activity_type=row["activity_type"], researcher_name=row["researcher_name"],
+                observation_reference=row["observation_reference"],
+                species_common_name=row["species_common_name"], occurred_at=row["occurred_at"],
             )
             for row in rows
         ]

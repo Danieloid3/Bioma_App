@@ -36,6 +36,7 @@ La arquitectura detallada vive en `ARCHITECTURE.md`; decisiones justificadas en 
 - Mantener OpenAPI, README, ARCHITECTURE y DECISIONS alineados con el código.
 - Estado backend: cuando RLS no recupera fuentes para una consulta RAG, responder con una negativa determinista y auditable sin invocar al LLM; conservar pruebas unitarias y pruebas SQL RLS/RAG para este flujo.
 - Estado frontend: las vistas consumen el contrato de API mediante un cliente único, con bearer solo en memoria, refresh cookie HttpOnly, TanStack Query e i18n; el dashboard no inventa métricas que el API no expone.
+- Estado producto: `GET /v1/dashboard` calcula métricas, clasificación y actividad desde filas visibles por RLS. Las revisiones también tienen RLS, pues contienen coordenadas y notas históricas. El catálogo de especies incluye una imagen destacada curada con fuente, licencia y atribución; no es evidencia de un avistamiento.
 - Al realizar un commit, actualizar este archivo y el `AGENTS.md` de la capa afectada cuando cambie contexto, arquitectura, reglas, decisiones, comandos, estructura o estado del proyecto. No hacer cambios cosméticos solo para forzar una actualización.
 - Antes de un push: compilar backend y frontend, ejecutar pruebas de seguridad y comprobar `docker compose config`.
 

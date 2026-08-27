@@ -44,6 +44,10 @@ Los embeddings se procesan en el worker independiente `app/workers/embeddings.py
 - Errores HTTP uniformes y `X-Correlation-ID` en todas las respuestas.
 - Docker Compose levanta PostgreSQL/pgvector, migrador, API, Redis y el worker opcional.
 
+## Dashboard y catálogo
+
+El dashboard llama a funciones `SECURITY INVOKER` que agregan únicamente filas de `bio_sightings` visibles bajo RLS. La actividad une creación y revisiones, y `bio_sighting_revisions` posee su propia política RLS antes de poder leerse. Las imágenes de especie son catálogo curado en `bio_species_images`: conservan fuente, licencia y textos alternativos; no sustituyen ni comparten el modelo de evidencias de avistamiento.
+
 ## Pendiente de integración
 
 El backend emite `pg_notify` ante cambios de avistamientos, pero aún no expone WebSocket ni SSE. La entrega de tiempo real queda pendiente junto con el frontend.

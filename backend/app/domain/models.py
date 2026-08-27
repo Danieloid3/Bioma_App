@@ -88,6 +88,12 @@ class Species:
     common_name: str
     scientific_name: str
     iucn_category: str
+    image_url: str | None = None
+    image_alt_text_es: str | None = None
+    image_alt_text_en: str | None = None
+    image_attribution: str | None = None
+    image_license_code: str | None = None
+    image_license_url: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,3 +101,34 @@ class Site:
     site_id: UUID
     site_name: str
     region: str
+
+
+@dataclass(frozen=True, slots=True)
+class DashboardSummary:
+    visible_sightings: int
+    registered_species: int
+    monitored_sites: int
+    field_notes: int
+
+
+@dataclass(frozen=True, slots=True)
+class ClassificationCount:
+    classification_level: int
+    total: int
+
+
+@dataclass(frozen=True, slots=True)
+class ActivityItem:
+    activity_type: str
+    researcher_name: str
+    observation_reference: str
+    species_common_name: str
+    occurred_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class ResearcherDirectoryItem:
+    researcher_id: UUID
+    full_name: str
+    role_title: str
+    accreditation_level: int
