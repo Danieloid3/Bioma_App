@@ -85,11 +85,13 @@ def _is_greeting(text: str) -> bool:
 
 def _cited_sources(text: str, authorized_sources: Sequence[CopilotSource]) -> tuple[CopilotSource, ...]:
     """Return authorized sources explicitly cited in answer order, without trusting the model."""
-    sources_by_reference = {source.observation_reference: source for source in authorized_sources}
+    sources_by_reference = {
+        source.observation_reference.casefold(): source for source in authorized_sources
+    }
     cited: list[CopilotSource] = []
     seen_references: set[str] = set()
     for match in _CITATION_PATTERN.finditer(text):
-        reference = match.group(1)
+        reference = match.group(1).casefold()
         if reference not in seen_references and (source := sources_by_reference.get(reference)):
             cited.append(source)
             seen_references.add(reference)

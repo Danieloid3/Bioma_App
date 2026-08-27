@@ -178,3 +178,29 @@ async def test_channel_history_can_answer_without_citing_unrelated_sighting_cand
 
     assert answer.text == "Sí, Sofía dijo que está bien."
     assert answer.sources == ()
+
+
+async def test_citations_match_references_case_insensitively() -> None:
+    source = CopilotSource(
+        sighting_id=UUID("80000000-0000-0000-0000-000000000012"),
+        observation_reference="obs-5004",
+        species_common_name="Colibrí chillón",
+        field_notes="Registro autorizado.",
+        similarity=0.9,
+    )
+
+    class CitingCopilot:
+        async def answer(self, **_: object) -> CopilotAnswer:
+            return CopilotAnswer("Se registró el ave [OBS-5004].", (source,), "fake", 2, 3)
+
+    async def audit(**_: object) -> object:
+        return UUID("80000000-0000-0000-0000-000000000013")
+
+    async def context(_: list[float]) -> list[CopilotSource]:
+        return [source]
+
+    answer = await AnswerCopilotQuestion(
+        embeddings=FakeEmbeddings(), copilot=CitingCopilot(), context=context, audit=audit
+    ).execute(actor=actor(), question="¿Qué ave fue registrada?")
+
+    assert answer.sources == (source,)
