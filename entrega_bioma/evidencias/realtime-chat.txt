@@ -1,0 +1,7 @@
+Validación de mensajería en tiempo real — 2026-08-27
+
+- Docker Compose: API, PostgreSQL, Redis y web levantados correctamente.
+- Prueba HTTP real con PostgreSQL y Redis: un integrante recibió `message.created` por SSE.
+- Prueba HTTP real de aislamiento: un no integrante no recibió ningún evento del canal privado.
+- Handshake SSE en Railway: `https://api-production-a570a.up.railway.app/v1/chat/events` respondió `: connected` con bearer válido.
+- Commit desplegado: `964afed feat: add secure realtime chat events`.

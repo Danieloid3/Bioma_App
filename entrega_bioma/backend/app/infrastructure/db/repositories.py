@@ -422,6 +422,12 @@ class PostgresChatRepository:
     async def delete(self, message_id: UUID) -> None:
         await self._connection.execute("SELECT bio_fn_delete_chat_message($1)", message_id)
 
+    async def message_channel_id(self, message_id: UUID) -> UUID | None:
+        return await self._connection.fetchval(
+            "SELECT bio_chat_channel_id FROM bio_chat_messages WHERE bio_chat_message_id = $1",
+            message_id,
+        )
+
     async def retrieve_shared_sighting_context(
         self, channel_id: UUID, embedding: Sequence[float], limit: int = 5
     ) -> list[CopilotSource]:

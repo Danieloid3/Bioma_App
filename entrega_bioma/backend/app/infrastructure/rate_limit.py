@@ -24,6 +24,11 @@ class RedisRateLimiter:
     def __init__(self, redis: Redis) -> None:
         self._redis = redis
 
+    @property
+    def client(self) -> Redis:
+        """Shared Redis client used by infrastructure concerns in this process."""
+        return self._redis
+
     @classmethod
     def from_url(cls, url: str) -> "RedisRateLimiter":
         return cls(Redis.from_url(url, decode_responses=False))

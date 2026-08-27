@@ -54,6 +54,10 @@ El frontend presenta las especies y sitios mediante modales interactivos con im�
 
 La mensajería interna vive junto a Bioma en PostgreSQL y FastAPI. Las membresías de canal, historial, búsqueda semántica y recuperación RAG se gobiernan con el mismo actor transaccional y RLS que protege los avistamientos. Redis queda reservado para señales efímeras de tiempo real; no es fuente de verdad. Esta decisión evita duplicar identidad/permisos en una base no relacional y permite probar que un no miembro no puede listar, buscar ni recuperar mensajes de un canal privado.
 
+## Tiempo real de chat con SSE autenticado y Redis Pub/Sub
+
+Se eligió Server-Sent Events sobre WebSocket porque la mensajería conserva comandos REST y requiere solo notificación servidor-cliente. Redis Pub/Sub permite que una escritura confirmada en una réplica despierte a clientes conectados a otra sin convertir Redis en almacenamiento de mensajes. El navegador abre el stream con `fetch` para adjuntar el bearer que permanece solo en memoria; no se admite token en URL. Cada señal se trata como una invalidación sin contenido y se filtra justo antes de emitirse mediante una nueva transacción con `app.current_user_id`, por lo que una membresía revocada no conserva una suscripción efectiva. El cliente recarga el recurso mediante REST+RLS y puede perder una señal sin perder consistencia al reconectar.
+
 ## Pipeline CI/CD en GitHub Actions
 
 Se automatizó la verificación continua en `.github/workflows/ci.yml`. Toda integración comprueba la compilación TypeScript de frontend, la validez del Compose y ejecuta las pruebas de aserción de seguridad PostgreSQL RLS/RAG con contenedores reales, garantizando que ninguna regresión de seguridad o de tipos llegue a producción.

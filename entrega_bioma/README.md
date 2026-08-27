@@ -13,6 +13,7 @@ Esta carpeta reúne los artefactos de la solución para revisión y evaluación.
 - `backend/` y `frontend/`: archivos fuente utilizados para implementar la solución.
 - `compose.yaml` y `.env.example`: ejecución reproducible sin secretos.
 - `evidencias/`: resultados resumidos de las validaciones ejecutadas.
+- `backend/app/infrastructure/chat_events.py` y `backend/tests/test_api_chat_realtime_http.py`: tiempo real SSE autenticado, Redis Pub/Sub y prueba de aislamiento entre miembros y no miembros.
 
 ## Ejecución
 
