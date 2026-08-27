@@ -1,4 +1,5 @@
 import json
+import re
 from dataclasses import asdict
 from datetime import datetime
 from typing import Annotated
@@ -224,7 +225,13 @@ async def ask_channel_copilot(
     conversation_history = [
         ConversationMessage(
             role="assistant" if item.sender_role == "copilot" else "user",
-            content=item.message_text,
+            # Previous assistant citations are not evidence for this turn. They
+            # are removed from the conversational transcript so the model cannot
+            # copy an old reference that is absent from the current RLS result.
+            content=(
+                re.sub(r"\[obs-[A-Za-z0-9-]+\]", "", item.message_text, flags=re.IGNORECASE)
+                if item.sender_role == "copilot" else item.message_text
+            ),
         )
         for item in reversed(recent_messages)
         if item.message_text.strip().casefold() != current_message
