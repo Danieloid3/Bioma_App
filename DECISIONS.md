@@ -32,6 +32,10 @@ Los conteos y la actividad no se calculan con privilegios de propietario ni se e
 
 Las fotos representativas viven en `bio_species_images`, no en `bio_species` ni en los avistamientos. La separación permite mantener licencia, atribución, idioma y reemplazos sin contaminar la taxonomía ni confundir una imagen institucional con evidencia de campo. Solo se expone una imagen destacada activa por especie, garantizada con un índice parcial.
 
+## Ficha individual con denegación uniforme
+
+La ficha incluye coordenadas exactas, por lo que no se deriva del listado ni se compone en el cliente. Una función invocada bajo el actor deja que RLS autorice el registro completo; si no hay fila, la API retorna 404 igual que para un UUID inexistente. Esto evita filtrar la existencia de un avistamiento confidencial.
+
 ## Pendientes aceptados
 
 Las evidencias audiovisuales y la entrega en tiempo real al frontend quedan fuera de este cierre de backend. PostgreSQL ya publica eventos `pg_notify`; el transporte WebSocket/SSE se decidirá durante la integración frontend.

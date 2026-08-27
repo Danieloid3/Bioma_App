@@ -112,7 +112,7 @@ services:
 
   embedding-worker:
     image: bioma-local-api:dev
-    profiles: ["worker"]
+    restart: unless-stopped
     build:
       context: ./backend
     environment:

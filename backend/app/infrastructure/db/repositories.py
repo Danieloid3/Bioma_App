@@ -14,6 +14,7 @@ from app.domain.models import (
     LoginResearcher,
     ResearcherDirectoryItem,
     SightingHistoryItem,
+    SightingDetail,
     SightingSearchItem,
     Site,
     Species,
@@ -58,7 +59,7 @@ class PostgresSightingRepository:
         page_size: int,
     ) -> list[SightingHistoryItem]:
         rows = await self._connection.fetch(
-            "SELECT * FROM bio_fn_sighting_history($1, $2, $3, $4, $5, false)",
+            "SELECT * FROM bio_fn_sighting_history_with_images($1, $2, $3, $4, $5, false)",
             species_id,
             site_id,
             cursor_observed_at,
@@ -76,9 +77,47 @@ class PostgresSightingRepository:
                 field_notes=row["field_notes"],
                 observed_at=row["observed_at"],
                 is_voided=row["is_voided"],
+                image_url=row["image_url"],
+                image_alt_text_es=row["image_alt_text_es"],
             )
             for row in rows
         ]
+
+    async def get_detail(self, *, sighting_id: UUID) -> SightingDetail | None:
+        row = await self._connection.fetchrow(
+            "SELECT * FROM bio_fn_get_sighting_detail($1)", sighting_id
+        )
+        if row is None:
+            return None
+        return SightingDetail(
+            sighting_id=row["sighting_id"],
+            observation_reference=row["observation_reference"],
+            researcher_id=row["researcher_id"],
+            researcher_name=row["researcher_name"],
+            species_id=row["species_id"],
+            species_common_name=row["species_common_name"],
+            species_scientific_name=row["species_scientific_name"],
+            species_iucn_category=row["species_iucn_category"],
+            site_id=row["site_id"],
+            site_name=row["site_name"],
+            region=row["region"],
+            observed_at=row["observed_at"],
+            exact_latitude=float(row["exact_latitude"]),
+            exact_longitude=float(row["exact_longitude"]),
+            classification_level=row["classification_level"],
+            field_notes=row["field_notes"],
+            is_voided=row["is_voided"],
+            voided_at=row["voided_at"],
+            voided_by_researcher_id=row["voided_by_researcher_id"],
+            void_reason=row["void_reason"],
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+            image_url=row["image_url"],
+            image_alt_text_es=row["image_alt_text_es"],
+            image_attribution=row["image_attribution"],
+            image_license_code=row["image_license_code"],
+            image_license_url=row["image_license_url"],
+        )
 
     async def retrieve_context(self, embedding: Sequence[float], limit: int) -> list[CopilotSource]:
         rows = await self._connection.fetch(

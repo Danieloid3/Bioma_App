@@ -67,3 +67,4 @@ Usar fondos marfil cálidos y neutros oscuros de contraste cuando sea necesario 
 - `SightingsPanel` usa TanStack Query e historial por keyset; `CopilotPanel` muestra únicamente las fuentes retornadas por el API.
 - La navegación actual no usa un router externo: las vistas dashboard, avistamientos, búsqueda, copiloto y perfil se componen dentro de `App` para este alcance.
 - El dashboard consume exclusivamente `GET /v1/dashboard`; las tarjetas y el gráfico no usan cifras de relleno. Especies recibe su foto icónica, texto alternativo y atribución desde el API; abrir la licencia en una nueva pestaña y no tratarla como evidencia de campo.
+- Las filas de avistamientos son abribles y solicitan su ficha al API; no usar datos de lista para reconstruir detalles o coordenadas. El copiloto conserva solamente el historial de la sesión en memoria, renderiza texto sin HTML y envía con Enter (Shift+Enter añade salto).

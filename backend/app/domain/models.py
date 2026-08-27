@@ -68,6 +68,39 @@ class SightingHistoryItem:
     field_notes: str
     observed_at: datetime
     is_voided: bool
+    image_url: str | None = None
+    image_alt_text_es: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SightingDetail:
+    sighting_id: UUID
+    observation_reference: str
+    researcher_id: UUID
+    researcher_name: str
+    species_id: UUID
+    species_common_name: str
+    species_scientific_name: str
+    species_iucn_category: str
+    site_id: UUID
+    site_name: str
+    region: str
+    observed_at: datetime
+    exact_latitude: float
+    exact_longitude: float
+    classification_level: int
+    field_notes: str
+    is_voided: bool
+    voided_at: datetime | None
+    voided_by_researcher_id: UUID | None
+    void_reason: str | None
+    created_at: datetime
+    updated_at: datetime
+    image_url: str | None
+    image_alt_text_es: str | None
+    image_attribution: str | None
+    image_license_code: str | None
+    image_license_url: str | None
 
 
 @dataclass(frozen=True, slots=True)

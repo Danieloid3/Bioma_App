@@ -8,6 +8,7 @@ from app.domain.models import (
     CopilotSource,
     DashboardSummary,
     SightingHistoryItem,
+    SightingDetail,
     SightingSearchItem,
     Site,
     Species,
@@ -16,6 +17,8 @@ from app.domain.models import (
 
 
 class SightingRepository(Protocol):
+    async def get_detail(self, *, sighting_id: UUID) -> SightingDetail | None: ...
+
     async def register(
         self,
         *,

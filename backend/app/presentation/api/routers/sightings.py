@@ -3,11 +3,12 @@ from typing import Annotated
 from uuid import UUID
 
 import asyncpg
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field, model_validator
 
 from app.application.use_cases.sightings import (
     EditSighting,
+    GetSightingDetail,
     ListSightingHistory,
     RegisterSighting,
     SearchSightings,
@@ -57,6 +58,20 @@ class EditSightingRequest(BaseModel):
 
 class VoidSightingRequest(BaseModel):
     reason: str = Field(min_length=1, max_length=500)
+
+
+@router.get("/{sighting_id}", responses=COMMON_ERROR_RESPONSES)
+async def get_sighting_detail(
+    sighting_id: UUID, actor_connection: ActorConnection
+) -> object:
+    _, connection = actor_connection
+    detail = await GetSightingDetail(PostgresSightingRepository(connection)).execute(
+        sighting_id=sighting_id
+    )
+    if detail is None:
+        # A forbidden row is indistinguishable from an unknown UUID by design.
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    return detail
 
 
 @router.get("", responses=COMMON_ERROR_RESPONSES)

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
-from app.domain.models import SightingHistoryItem, SightingSearchItem
+from app.domain.models import SightingDetail, SightingHistoryItem, SightingSearchItem
 from app.domain.ports.repositories import SightingRepository
 
 
@@ -26,6 +26,14 @@ class ListSightingHistory:
             cursor_sighting_id=cursor_sighting_id,
             page_size=page_size,
         )
+
+
+@dataclass(slots=True)
+class GetSightingDetail:
+    sightings: SightingRepository
+
+    async def execute(self, *, sighting_id: UUID) -> SightingDetail | None:
+        return await self.sightings.get_detail(sighting_id=sighting_id)
 
 
 @dataclass(slots=True)

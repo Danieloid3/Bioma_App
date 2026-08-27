@@ -52,6 +52,8 @@ El endpoint `POST /v1/copilot/ask` devuelve siempre las fuentes recuperadas para
 
 `GET /v1/dashboard` usa funciones SQL invocadas bajo el actor para métricas, clasificación y actividad. No calcular agregados desde una conexión sin actor. `bio_sighting_revisions` tiene RLS propio porque conserva contenido sensible histórico; ningún endpoint debe consultar revisiones sin la transacción de actor.
 
+`GET /v1/sightings/{sighting_id}` llama a una función `SECURITY INVOKER`, por lo que RLS decide la ficha completa, incluidas coordenadas. Un resultado vacío se traduce en 404 uniforme para no revelar la existencia de un registro restringido.
+
 La recuperación RAG y la auditoría usan transacciones separadas: nunca mantener una transacción PostgreSQL abierta durante la llamada de red al modelo. Redis aplica rate limiting distribuido con claves HMAC, TTL, `429` y `Retry-After`.
 
 Implementación local: `RedisRateLimiter` usa un script Lua atómico (`INCR` + `EXPIRE`). Login aplica ventanas independientes por IP y huella HMAC de cuenta; copiloto limita por investigador. El servicio Redis de Compose usa volumen persistente solo para desarrollo.

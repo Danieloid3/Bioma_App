@@ -22,6 +22,26 @@ export type Sighting = {
   field_notes: string;
   observed_at: string;
   is_voided: boolean;
+  image_url?: string | null;
+  image_alt_text_es?: string | null;
+};
+
+export type SightingDetail = Sighting & {
+  researcher_id: string;
+  species_id: string;
+  species_scientific_name: string;
+  species_iucn_category: string;
+  site_id: string;
+  region: string;
+  exact_latitude: number;
+  exact_longitude: number;
+  voided_at: string | null;
+  void_reason: string | null;
+  created_at: string;
+  updated_at: string;
+  image_attribution: string | null;
+  image_license_code: string | null;
+  image_license_url: string | null;
 };
 
 export type SightingPage = { items: Sighting[] };
