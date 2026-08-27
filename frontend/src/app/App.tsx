@@ -63,7 +63,6 @@ export function App() {
     { view: "species", icon: Leaf, label: t("nav.species") }, { view: "sites", icon: MapPin, label: t("nav.sites") },
     { view: "researchers", icon: UsersRound, label: t("nav.researchers") }, { view: "search", icon: Search, label: t("nav.search") },
     { view: "chat", icon: MessageCircle, label: t("nav.chat") }, { view: "copilot", icon: Bot, label: t("nav.copilot") }, { view: "reports", icon: FileBarChart, label: t("nav.reports") },
-    { view: "admin", icon: Settings, label: t("nav.admin") },
     { view: "profile", icon: Settings, label: t("nav.profile") },
   ];
   const selectView = (value: View) => {
@@ -174,7 +173,7 @@ function AppView({ view, api, researcher, onLogout, onNavigate, onOpenSighting }
   if (view === "admin") return <PromptAdminPanel api={api} />;
 
   if (view === "copilot") return <div className="single-column"><CopilotPanel api={api} onOpenSighting={onOpenSighting} /></div>;
-  if (view === "profile") return <div className="single-column"><ProfilePanel researcher={researcher} onLogout={onLogout} /></div>;
+  if (view === "profile") return <div className="single-column"><ProfilePanel api={api} researcher={researcher} onLogout={onLogout} onNavigate={onNavigate} /></div>;
   if (view === "reports") return <ReportsPanel api={api} onNavigate={onNavigate} />;
   return <DashboardPanel api={api} onNavigate={onNavigate} />;
 }
