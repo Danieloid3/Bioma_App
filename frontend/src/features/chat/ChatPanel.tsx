@@ -76,6 +76,8 @@ type DirectoryResponse = {
   items: Researcher[];
 };
 
+type ChannelMember = Researcher;
+
 function formatInlineContent(
   text: string,
   sourceByReference: Map<string, Citation>,
@@ -284,6 +286,8 @@ export function ChatPanel({
   const [isSending, setIsSending] = useState(false);
   const [isCopilotThinking, setIsCopilotThinking] = useState(false);
   const [showUsageModal, setShowUsageModal] = useState(false);
+  const [showMembersModal, setShowMembersModal] = useState(false);
+  const [channelMembers, setChannelMembers] = useState<ChannelMember[]>([]);
   const [activeMenuMessageId, setActiveMenuMessageId] = useState<string | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
@@ -306,6 +310,16 @@ export function ChatPanel({
     queryFn: () => api.get<CopilotUsageResponse>("/v1/copilot/usage"),
     enabled: showUsageModal,
   });
+
+  async function openMembers() {
+    if (!activeChannelId) return;
+    try {
+      setChannelMembers(await api.get<ChannelMember[]>(`/v1/chat/channels/${activeChannelId}/members`));
+      setShowMembersModal(true);
+    } catch {
+      setError(t("errors.network"));
+    }
+  }
 
   // Cerrar menú de opciones al hacer click afuera
   useEffect(() => {
@@ -746,15 +760,16 @@ export function ChatPanel({
             </div>
           </div>
 
-          {/* Botón de la tuerquita (Consumo de Copiloto) */}
-          <button
-            type="button"
-            className={styles.settingsButton}
-            onClick={() => setShowUsageModal(true)}
-            title={t("chat.usageTitle")}
-          >
-            <Settings aria-hidden="true" />
-          </button>
+          <div className={styles.headerActions}>
+            {activeChannel?.channel_type === "group" && (
+              <button type="button" className={styles.settingsButton} onClick={() => void openMembers()} title="Ver integrantes">
+                <Users aria-hidden="true" />
+              </button>
+            )}
+            <button type="button" className={styles.settingsButton} onClick={() => setShowUsageModal(true)} title={t("chat.usageTitle")}>
+              <Settings aria-hidden="true" />
+            </button>
+          </div>
         </header>
 
         {/* Hilo de mensajes */}
@@ -1084,6 +1099,26 @@ export function ChatPanel({
             <div className={styles.modalNotice}>
               <ShieldCheck aria-hidden="true" />
               <span>{t("chat.securityNotice")}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMembersModal && (
+        <div className={styles.modalOverlay} onClick={() => setShowMembersModal(false)}>
+          <div className={styles.membersModal} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Integrantes del grupo">
+            <div className={styles.modalHeader}>
+              <div><h3>Integrantes del grupo</h3><p>{channelMembers.length} investigadores activos</p></div>
+              <button type="button" className={styles.closeButton} onClick={() => setShowMembersModal(false)}><X aria-hidden="true" /></button>
+            </div>
+            <div className={styles.groupMembersList}>
+              {channelMembers.map((member) => (
+                <div className={styles.groupMemberRow} key={member.researcher_id}>
+                  <AnimalAvatar avatarKey={member.animal_avatar_key} seed={member.researcher_id} />
+                  <div><strong>{member.full_name}</strong><span>{member.role_title}</span></div>
+                  <small>Nivel {member.accreditation_level}</small>
+                </div>
+              ))}
             </div>
           </div>
         </div>

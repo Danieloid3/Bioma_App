@@ -253,6 +253,10 @@ async def ask(
         async with database.actor_transaction(actor.researcher_id) as connection:
             return await PostgresCopilotAuditRepository(connection).record(**kwargs)
 
+    async with database.actor_transaction(actor.researcher_id) as connection:
+        field_prompt = await connection.fetchrow("SELECT * FROM bio_fn_get_active_system_prompt('field')")
+        greeting_prompt = await connection.fetchrow("SELECT * FROM bio_fn_get_active_system_prompt('greeting')")
+
     # 4. Execute copilot question with conversation history and catalog knowledge
     answer = await AnswerCopilotQuestion(
         embeddings=embeddings,
@@ -260,7 +264,11 @@ async def ask(
         context=retrieve_context,
         audit=record_audit,
         catalog=retrieve_catalog,
-    ).execute(actor=actor, question=payload.question, history=recent_messages)
+    ).execute(
+        actor=actor, question=payload.question, history=recent_messages,
+        system_prompt=field_prompt["prompt_text"], system_prompt_version=field_prompt["version_key"],
+        greeting_prompt=greeting_prompt["prompt_text"],
+    )
 
     if answer.audit_usage_id is None:
         raise RuntimeError("copilot audit did not return a usage identifier")

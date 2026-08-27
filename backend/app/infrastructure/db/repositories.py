@@ -11,6 +11,7 @@ from app.domain.models import (
     Actor,
     CatalogKnowledgeItem,
     ChatChannelItem,
+    ChatChannelMember,
     ChatMessageItem,
     ClassificationCount,
     CopilotConversationItem,
@@ -388,6 +389,13 @@ class PostgresChatRepository:
         return await self._connection.fetchval(
             "SELECT bio_fn_create_chat_channel($1, $2, $3::uuid[])", channel_type, name, member_ids
         )
+
+    async def members(self, channel_id: UUID) -> list[ChatChannelMember]:
+        rows = await self._connection.fetch("SELECT * FROM bio_fn_chat_channel_members($1)", channel_id)
+        return [ChatChannelMember(
+            researcher_id=row["researcher_id"], full_name=row["full_name"], role_title=row["role_title"],
+            accreditation_level=row["accreditation_level"], avatar_key=row["avatar_key"],
+        ) for row in rows]
 
     async def history(self, channel_id: UUID, cursor_created_at: datetime | None, cursor_message_id: UUID | None, limit: int) -> list[ChatMessageItem]:
         await self._connection.execute("SELECT bio_fn_mark_chat_channel_read($1)", channel_id)

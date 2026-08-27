@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 POSTGRES_ERROR_MAP: dict[str, tuple[int, str, str]] = {
+    "42501": (status.HTTP_403_FORBIDDEN, "forbidden", "No tienes permisos para esta operación."),
     "22023": (status.HTTP_422_UNPROCESSABLE_CONTENT, "invalid_request", "Solicitud inválida."),
     "23505": (status.HTTP_409_CONFLICT, "resource_conflict", "El recurso ya existe."),
     "P0001": (status.HTTP_401_UNAUTHORIZED, "authentication_required", "Autenticación requerida."),

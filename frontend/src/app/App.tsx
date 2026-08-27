@@ -7,6 +7,7 @@ import { LoginPage } from "../features/auth/LoginPage";
 import { ResearchersPanel, SitesPanel, SpeciesPanel } from "../features/catalog/CatalogPanels";
 import { CopilotPanel } from "../features/copilot/CopilotPanel";
 import { ChatPanel } from "../features/chat/ChatPanel";
+import { PromptAdminPanel } from "../features/admin/PromptAdminPanel";
 import { DashboardPanel } from "../features/dashboard/DashboardPanel";
 import { ProfilePanel } from "../features/profile/ProfilePanel";
 import { ReportsPanel } from "../features/reports/ReportsPanel";
@@ -14,7 +15,7 @@ import { SightingDetailDialog, SightingsPanel } from "../features/sightings/Sigh
 import { ApiClient } from "../shared/api/client";
 import { AnimalAvatar } from "../shared/components/AnimalAvatar";
 
-type View = "dashboard" | "sightings" | "species" | "sites" | "researchers" | "search" | "chat" | "copilot" | "reports" | "profile";
+type View = "dashboard" | "sightings" | "species" | "sites" | "researchers" | "search" | "chat" | "copilot" | "reports" | "profile" | "admin";
 
 export function App() {
   const { i18n, t } = useTranslation();
@@ -62,6 +63,7 @@ export function App() {
     { view: "species", icon: Leaf, label: t("nav.species") }, { view: "sites", icon: MapPin, label: t("nav.sites") },
     { view: "researchers", icon: UsersRound, label: t("nav.researchers") }, { view: "search", icon: Search, label: t("nav.search") },
     { view: "chat", icon: MessageCircle, label: t("nav.chat") }, { view: "copilot", icon: Bot, label: t("nav.copilot") }, { view: "reports", icon: FileBarChart, label: t("nav.reports") },
+    { view: "admin", icon: Settings, label: t("nav.admin") },
     { view: "profile", icon: Settings, label: t("nav.profile") },
   ];
   const selectView = (value: View) => {
@@ -169,6 +171,7 @@ function AppView({ view, api, researcher, onLogout, onNavigate, onOpenSighting }
   if (view === "sites") return <SitesPanel api={api} />;
   if (view === "researchers") return <ResearchersPanel api={api} />;
   if (view === "chat") return <ChatPanel api={api} researcher={researcher} onOpenSighting={onOpenSighting} />;
+  if (view === "admin") return <PromptAdminPanel api={api} />;
 
   if (view === "copilot") return <div className="single-column"><CopilotPanel api={api} onOpenSighting={onOpenSighting} /></div>;
   if (view === "profile") return <div className="single-column"><ProfilePanel researcher={researcher} onLogout={onLogout} /></div>;

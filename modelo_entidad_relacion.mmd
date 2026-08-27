@@ -25,6 +25,7 @@ erDiagram
     bio_chat_messages ||--o{ bio_chat_message_receipts : tracks
     bio_researchers ||--o{ bio_chat_message_receipts : reads
     bio_chat_messages ||--o{ bio_chat_copilot_citations : cites
+    bio_researchers ||--o{ bio_system_prompt_versions : creates
 
     bio_researchers {
         UUID bio_researcher_id PK
@@ -35,6 +36,7 @@ erDiagram
         SMALLINT bio_accreditation_level
         VARCHAR bio_avatar_key
         BOOLEAN bio_is_active
+        BOOLEAN bio_is_admin
         TIMESTAMPTZ bio_created_at
         TIMESTAMPTZ bio_updated_at
     }
@@ -252,5 +254,16 @@ erDiagram
         VARCHAR bio_source_reference
         UUID bio_source_id
         SMALLINT bio_rank
+        TIMESTAMPTZ bio_created_at
+    }
+
+    bio_system_prompt_versions {
+        UUID bio_system_prompt_version_id PK
+        VARCHAR bio_scope
+        INTEGER bio_version_number
+        TEXT bio_prompt_text
+        VARCHAR bio_content_sha256
+        BOOLEAN bio_is_active
+        UUID bio_created_by_researcher_id FK
         TIMESTAMPTZ bio_created_at
     }

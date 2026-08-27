@@ -120,6 +120,15 @@ class ChatChannelItem:
 
 
 @dataclass(frozen=True, slots=True)
+class ChatChannelMember:
+    researcher_id: UUID
+    full_name: str
+    role_title: str
+    accreditation_level: int
+    avatar_key: str
+
+
+@dataclass(frozen=True, slots=True)
 class ChatMessageItem:
     message_id: UUID
     channel_id: UUID

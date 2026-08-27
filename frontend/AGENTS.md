@@ -92,5 +92,6 @@ El access token permanece solo en memoria. Al recargar, la aplicación restaura 
 - Registration plan documented in `docs/registration-plan.md` (pending institutional verification before implementation).
 
 
-- La pantalla de login presenta una estética orgánica dividida en dos paneles a pantalla completa: un hero visual botánico con el lema *"Cada avistamiento cuenta."* y un panel cálido marfil con una tarjeta de ingreso limpia, bordes redondeados, selector de idioma, cuentas de demo colapsables e iconos en los campos de texto.
+- La pantalla de login presenta una estética orgánica dividida en dos paneles a pantalla completa: un hero visual botánico con el lema *"Cada avistamiento cuenta."* y un panel cálido marfil con una tarjeta de ingreso limpia, bordes redondeados, selector de idioma e iconos en los campos de texto; no muestra cuentas de demo ni opción de recordar sesión.
 - Las citas autorizadas [obs-XXXX] se visualizan como insignias (pills) amigables e interactivas con el icono de una hoja y la especie o referencia, y las menciones a '@copilot' en el chat resaltan visualmente con un badge verde orgánico y destellos.
+- Los grupos exponen a sus miembros mediante `GET /v1/chat/channels/{channel_id}/members`, que el panel presenta en un modal. La vista Administración consume `/v1/admin/system-prompts`: la autorización se aplica en PostgreSQL y permite crear o restaurar versiones inmutables de los prompts.

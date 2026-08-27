@@ -30,7 +30,7 @@ No hay borrado físico: la anulación es lógica y un trigger conserva revisione
 1. Se genera el embedding de la pregunta.
 2. Una transacción corta recupera fuentes vectoriales visibles por RLS.
 3. La conexión se cierra antes de llamar al proveedor IA.
-4. LangChain recibe solo esas fuentes y el prompt del servidor.
+4. LangChain recibe solo esas fuentes y el prompt activo resuelto desde PostgreSQL.
 5. El caso de uso conserva solo referencias recuperadas por RLS y citadas explícitamente en la respuesta; una segunda transacción guarda una única auditoría y sus citas.
 6. La persistencia del hilo enlaza el mensaje de asistente a esa misma auditoría; PostgreSQL vuelve a comprobar autorización y evita duplicar consumo.
 
@@ -57,6 +57,7 @@ La administración de usuarios se centraliza en procedimientos almacenados Postg
 - JWT de acceso corto y refresh token opaco, hasheado y rotativo.
 - Errores HTTP uniformes y `X-Correlation-ID` en todas las respuestas.
 - Docker Compose levanta PostgreSQL/pgvector, migrador, API, Redis y el worker de embeddings. El worker consume notas pendientes tras cada carga para que RAG tenga contexto disponible.
+- Los prompts de campo, chat y saludo se guardan como versiones inmutables en PostgreSQL. Solo un investigador administrador puede crear o activar una versión; el backend obtiene la activa dentro de la transacción del actor y audita su identificador con cada respuesta.
 
 ## Dashboard, catálogo enriquecido y fichas científicas
 

@@ -9,7 +9,16 @@ from app.infrastructure.db.database import Database
 from app.infrastructure.rate_limit import RedisRateLimiter
 from app.presentation.api.errors import install_exception_handlers
 from app.presentation.api.middleware import correlation_id_middleware
-from app.presentation.api.routers import auth, catalog, chat, copilot, dashboard, health, sightings
+from app.presentation.api.routers import (
+    admin,
+    auth,
+    catalog,
+    chat,
+    copilot,
+    dashboard,
+    health,
+    sightings,
+)
 from app.workers.embeddings import EmbeddingWorker
 
 
@@ -56,6 +65,7 @@ app.add_middleware(
 install_exception_handlers(app)
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(admin.router)
 app.include_router(catalog.router)
 app.include_router(dashboard.router)
 app.include_router(sightings.router)

@@ -6,10 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
-from app.application.use_cases.answer_copilot_question import (
-    CHAT_SYSTEM_PROMPT,
-    AnswerCopilotQuestion,
-)
+from app.application.use_cases.answer_copilot_question import AnswerCopilotQuestion
 from app.domain.models import Actor
 from app.infrastructure.ai.factory import build_ai_gateway
 from app.infrastructure.config import Settings, get_settings
@@ -47,6 +44,14 @@ class ChannelResponse(BaseModel):
     unread_count: int
     last_message_at: datetime | None
     display_name: str
+
+
+class ChannelMemberResponse(BaseModel):
+    researcher_id: UUID
+    full_name: str
+    role_title: str
+    accreditation_level: int
+    avatar_key: str
 
 
 class MessageResponse(BaseModel):
@@ -105,6 +110,13 @@ async def history(channel_id: UUID, actor: ActorDependency, database: DatabaseDe
     return [_message(item) for item in items]
 
 
+@router.get("/channels/{channel_id}/members", response_model=list[ChannelMemberResponse], responses=COMMON_ERROR_RESPONSES)
+async def channel_members(channel_id: UUID, actor: ActorDependency, database: DatabaseDependency) -> list[ChannelMemberResponse]:
+    async with database.actor_transaction(actor.researcher_id) as connection:
+        items = await PostgresChatRepository(connection).members(channel_id)
+    return [ChannelMemberResponse(**asdict(item)) for item in items]
+
+
 @router.post("/channels/{channel_id}/messages", response_model=MessageResponse, status_code=status.HTTP_201_CREATED, responses=COMMON_ERROR_RESPONSES)
 async def send_message(channel_id: UUID, payload: SendMessageRequest, actor: ActorDependency, database: DatabaseDependency) -> MessageResponse:
     async with database.actor_transaction(actor.researcher_id) as connection:
@@ -137,9 +149,16 @@ async def ask_channel_copilot(
         async with database.actor_transaction(actor.researcher_id) as connection:
             return await PostgresCopilotAuditRepository(connection).record(**kwargs)
 
+    async with database.actor_transaction(actor.researcher_id) as connection:
+        chat_prompt = await connection.fetchrow("SELECT * FROM bio_fn_get_active_system_prompt('chat')")
+        greeting_prompt = await connection.fetchrow("SELECT * FROM bio_fn_get_active_system_prompt('greeting')")
+
     answer = await AnswerCopilotQuestion(
         embeddings=embeddings, copilot=copilot, context=retrieve, audit=audit, catalog=catalog
-    ).execute(actor=actor, question=payload.question, system_prompt=CHAT_SYSTEM_PROMPT)
+    ).execute(
+        actor=actor, question=payload.question, system_prompt=chat_prompt["prompt_text"],
+        system_prompt_version=chat_prompt["version_key"], greeting_prompt=greeting_prompt["prompt_text"],
+    )
 
     sources = [{
         "type": source.source_type, "reference": source.observation_reference, "id": str(source.sighting_id)

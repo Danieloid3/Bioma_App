@@ -110,6 +110,8 @@ class AnswerCopilotQuestion:
         question: str,
         history: Sequence[ConversationMessage] = (),
         system_prompt: str | None = None,
+        system_prompt_version: str = SYSTEM_PROMPT_VERSION,
+        greeting_prompt: str = GREETING_SYSTEM_PROMPT,
     ) -> CopilotAnswer:
         clean_question = question.strip()
         if not clean_question:
@@ -121,7 +123,7 @@ class AnswerCopilotQuestion:
                 actor_role=actor.role_title,
                 question=clean_question,
                 sources=(),
-                system_prompt=GREETING_SYSTEM_PROMPT,
+                system_prompt=greeting_prompt,
                 history=history,
             )
             final_answer = CopilotAnswer(
@@ -134,7 +136,7 @@ class AnswerCopilotQuestion:
             audit_usage_id = await self.audit(
                 prompt=clean_question,
                 answer=final_answer.text,
-                system_prompt_version=SYSTEM_PROMPT_VERSION,
+                system_prompt_version=system_prompt_version,
                 model_name=final_answer.model_name,
                 input_tokens=final_answer.input_tokens,
                 output_tokens=final_answer.output_tokens,
@@ -192,7 +194,7 @@ class AnswerCopilotQuestion:
         audit_usage_id = await self.audit(
             prompt=clean_question,
             answer=final_answer.text,
-            system_prompt_version=SYSTEM_PROMPT_VERSION,
+            system_prompt_version=system_prompt_version,
             model_name=final_answer.model_name,
             input_tokens=final_answer.input_tokens,
             output_tokens=final_answer.output_tokens,

@@ -57,6 +57,7 @@ Los endpoints `/v1/copilot/conversations` y `/v1/copilot/conversations/{id}/mess
 - `007_repair_refresh_token_rotation.sql` restaura el contrato completo del actor durante la rotación y enlaza cada token hijo con el token original usado.
 - `008_fix_chat_message_counter.sql` evita multiplicar el conteo de mensajes por el número de integrantes al listar canales.
 - `009_chat_unread_receipts.sql` añade el contador de no leídos por actor y marca como leídos los recibos al abrir el historial.
+- `010_group_members_and_prompt_versions.sql` agrega consulta de integrantes y prompts versionados por ámbito, con administración autorizada en PostgreSQL; `011_fix_prompt_function_contracts.sql` estabiliza sus contratos SQL.
 
 
 

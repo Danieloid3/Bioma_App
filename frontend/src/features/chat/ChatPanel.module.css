@@ -262,6 +262,15 @@
   height: 1.1rem;
 }
 
+.headerActions { display: flex; align-items: center; gap: .45rem; }
+.membersModal { width: min(92vw, 28rem); max-height: min(78vh, 36rem); overflow: auto; background: #fffdf8; border: 1px solid var(--line); border-radius: 1rem; box-shadow: 0 20px 48px #3f472b33; padding: 1.1rem; }
+.groupMembersList { display: grid; gap: .55rem; margin-top: .9rem; }
+.groupMemberRow { display: flex; align-items: center; gap: .65rem; padding: .6rem; border: 1px solid var(--line); border-radius: .75rem; background: #f7f8f0; }
+.groupMemberRow > div { min-width: 0; display: grid; gap: .08rem; flex: 1; }
+.groupMemberRow strong { font-size: .82rem; color: var(--brown-deep); }
+.groupMemberRow span,.groupMemberRow small { font-size: .7rem; color: var(--muted); }
+.groupMemberRow small { white-space: nowrap; }
+
 /* Transcripción / Hilo de mensajes */
 .transcript {
   flex: 1;
