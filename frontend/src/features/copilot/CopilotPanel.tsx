@@ -1,4 +1,4 @@
-import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
+import { Fragment, FormEvent, KeyboardEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { Leaf, Send, Sparkles } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -16,7 +16,7 @@ function createMessageId() {
   return crypto.randomUUID();
 }
 
-export function CopilotPanel({ api }: { api: ApiClient }) {
+export function CopilotPanel({ api, onOpenSighting }: { api: ApiClient; onOpenSighting: (sightingId: string) => void }) {
   const { t } = useTranslation();
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -77,15 +77,15 @@ export function CopilotPanel({ api }: { api: ApiClient }) {
           <article key={message.id} className={`${styles.message} ${styles[message.role]}`}>
             {message.role === "assistant" && <span className={styles.messageMark} aria-hidden="true"><Leaf /></span>}
             <div className={styles.bubble}>
-              <p>{message.text}</p>
+              {message.role === "assistant" ? <FormattedAnswer text={message.text} sources={message.sources} onOpenSighting={onOpenSighting} /> : <p>{message.text}</p>}
               {message.role === "assistant" && message.sources.length > 0 && (
                 <div className={styles.sources}>
                   <h3>{t("copilot.sources")}</h3>
                   {message.sources.map((source, index) => (
-                    <div className={styles.source} key={`${source.sighting_id}-${index}`}>
+                    <button className={styles.source} type="button" key={`${source.sighting_id}-${index}`} onClick={() => onOpenSighting(source.sighting_id)}>
                       <strong>{source.observation_reference}</strong>
                       <span>{source.species_common_name}</span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}
@@ -122,4 +122,22 @@ export function CopilotPanel({ api }: { api: ApiClient }) {
       </form>
     </section>
   );
+}
+
+function FormattedAnswer({ text, sources, onOpenSighting }: { text: string; sources: CopilotAnswer["sources"]; onOpenSighting: (sightingId: string) => void }) {
+  const sourceByReference = new Map(sources.map((source) => [source.observation_reference.toLowerCase(), source]));
+  const blocks = text.trim().split(/\n{2,}/).filter(Boolean);
+  return <div className={styles.formattedAnswer}>{blocks.map((block, index) => {
+    const lines = block.split("\n").filter(Boolean);
+    if (lines.every((line) => /^[-•]\s+/.test(line))) return <ul key={index}>{lines.map((line, lineIndex) => <li key={lineIndex}>{linkAuthorizedReferences(line.replace(/^[-•]\s+/, ""), sourceByReference, onOpenSighting)}</li>)}</ul>;
+    return <p key={index}>{linkAuthorizedReferences(block, sourceByReference, onOpenSighting)}</p>;
+  })}</div>;
+}
+
+function linkAuthorizedReferences(text: string, sourceByReference: Map<string, CopilotAnswer["sources"][number]>, onOpenSighting: (sightingId: string) => void): ReactNode[] {
+  return text.split(/(\[?obs-[A-Za-z0-9-]+\]?)/g).map((part, index) => {
+    const reference = part.replaceAll("[", "").replaceAll("]", "").toLowerCase();
+    const source = sourceByReference.get(reference);
+    return source ? <button className={styles.inlineReference} type="button" key={index} onClick={() => onOpenSighting(source.sighting_id)}>{part}</button> : <Fragment key={index}>{part}</Fragment>;
+  });
 }
