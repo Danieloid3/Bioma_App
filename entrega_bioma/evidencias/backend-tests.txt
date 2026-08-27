@@ -1,0 +1,5 @@
+Comando: docker compose exec -T api sh -lc "ruff check app tests && pytest -q"
+
+Resultado: PASS
+All checks passed!
+13 passed in 2.88s

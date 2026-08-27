@@ -1,0 +1,5 @@
+Comando: docker compose --profile test run --rm database-tests
+
+Resultado: PASS
+RLS, RAG, chat, prompt-version and refresh-token security assertions passed.
+Se verificó aislamiento RLS, citas autorizadas, chat, recibos y rechazo de administración para cuentas no admin.

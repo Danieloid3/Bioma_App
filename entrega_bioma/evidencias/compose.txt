@@ -1,0 +1,4 @@
+Comandos: docker compose config --quiet; docker compose up --build -d
+
+Resultado: PASS
+Configuración válida. db, migrator, api, embedding-worker, redis y web quedaron levantados; el migrador terminó correctamente.

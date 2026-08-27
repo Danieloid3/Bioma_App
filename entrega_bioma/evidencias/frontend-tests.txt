@@ -1,0 +1,4 @@
+Comandos: npm run lint; npm run build
+
+Resultado: PASS
+ESLint sin errores; TypeScript compilado; Vite produjo el bundle de producción.
