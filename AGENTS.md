@@ -43,9 +43,18 @@ La arquitectura detallada vive en `ARCHITECTURE.md`; decisiones justificadas en 
 - Despliegue en producción unificado en Railway: proyecto `bioma-app` con PostgreSQL (pgvector + RLS), Redis, API FastAPI (`https://backend-production-63145.up.railway.app`) con worker de embeddings integrado de ultra-bajo consumo (backoff adaptativo a 0% CPU en reposo) y Frontend Web (`https://frontend-production-946503.up.railway.app`).
 - Cada investigador persistido tiene una clave de avatar de una biblioteca finita; es un atributo de presentación devuelto por autenticación y directorio, no una credencial ni un URL aportado por cliente. El registro público permanece pendiente de verificación institucional.
 - El worker de embeddings procesa notas pendientes con backoff adaptativo inteligente y habilita recuperación RAG sin intervención manual ni sobrecostos de CPU.
-- `GET /v1/sightings/{id}` es una ficha protegida por RLS y responde 404 tanto para UUID inexistente como para una fila no autorizada. El listado incluye la imagen destacada de catálogo; la ficha solo muestra coordenadas después de que la misma política RLS autorice el registro.
+- El módulo de mensajería interna (`/v1/chat`) implementa aislamiento total RLS entre canales privados y públicos; un no-miembro obtiene 0 filas e intentos de envío son rechazados por la BD.
+- La edición de mensajes es versionada en `bio_chat_message_versions` y la eliminación es lógica (`bio_is_deleted = true`), devolviendo en consultas el tombstone *"Este mensaje fue eliminado"* y prohibiendo `DELETE` físico.
+- La administración y directorio de investigadores se respalda con procedimientos almacenados PostgreSQL (`bio_sp_get_active_researchers` con cursor y `bio_sp_manage_researcher` para edición y baja lógica autorizada).
+- El **Baseline Canónico v1.0** conserva 3 migraciones base inmutables (`001_core_schema.sql`, `002_functions_and_triggers.sql` y `003_seed_data.sql`) para las 18 entidades en 3FN. Las reparaciones posteriores se agregan hacia adelante en `004`–`009`: worker y persistencia del copiloto, historial/citas, contador y no leídos del chat, y rotación de refresh tokens; nunca se reescriben los checksums ya registrados.
+- Cada turno del copiloto genera exactamente una fila de `bio_copilot_usage`; el hilo enlaza su mensaje de asistente a esa auditoría. La persistencia revalida en PostgreSQL que todas las citas siguen autorizadas para el actor.
+- El buscador de avistamientos (`bio_fn_search_field_notes`) implementa búsqueda integral multieje e interactiva en tiempo real (typeahead) con `unaccent` y consultas por prefijo (`:*`), indexando texto completo (FTS) y coincidencias parciales (`ILIKE`) sobre notas de campo, nombre común y científico de la especie, sitio/reserva, región geográfica, referencia de observación (`obs-XXXX`) y autor, insensible a tildes y mayúsculas, respetando estrictamente RLS.
 - Al realizar un commit, actualizar este archivo y el `AGENTS.md` de la capa afectada cuando cambie contexto, arquitectura, reglas, decisiones, comandos, estructura o estado del proyecto. No hacer cambios cosméticos solo para forzar una actualización.
+
+
+
 - Antes de un push: compilar backend y frontend, ejecutar pruebas de seguridad y comprobar `docker compose config`.
+
 
 
 ## Comandos de trabajo

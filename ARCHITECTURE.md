@@ -31,11 +31,25 @@ No hay borrado físico: la anulación es lógica y un trigger conserva revisione
 2. Una transacción corta recupera fuentes vectoriales visibles por RLS.
 3. La conexión se cierra antes de llamar al proveedor IA.
 4. LangChain recibe solo esas fuentes y el prompt del servidor.
-5. El caso de uso conserva solo referencias recuperadas por RLS y citadas explícitamente en la respuesta; una segunda transacción guarda ese uso y esas citas.
+5. El caso de uso conserva solo referencias recuperadas por RLS y citadas explícitamente en la respuesta; una segunda transacción guarda una única auditoría y sus citas.
+6. La persistencia del hilo enlaza el mensaje de asistente a esa misma auditoría; PostgreSQL vuelve a comprobar autorización y evita duplicar consumo.
 
 Si RLS no devuelve fuentes, el caso de uso responde una negativa determinista y transparente, sin llamar al modelo. Las notas de campo son datos no confiables, nunca instrucciones.
 
 Los embeddings se procesan en el worker independiente `app/workers/embeddings.py`. El trigger de avistamientos invalida el vector al crear o cambiar notas; el worker reclama trabajos mediante `SKIP LOCKED`.
+
+## Mensajería interna protegida
+
+El módulo `/v1/chat` crea canales directos o grupales, sus membresías, mensajes, recibos de lectura y versiones inmutables. Las mutaciones pasan por funciones SQL (`bio_fn_create_chat_channel`, `bio_fn_send_chat_message`, `bio_fn_chat_history`). Editar un mensaje registra la versión anterior en `bio_chat_message_versions` y marca `is_edited = true`. Eliminar un mensaje es lógico: actualiza `bio_is_deleted = true`, preserva la versión previa mediante el trigger `trg_bio_chat_messages_10_archive` y devuelve el texto tombstone *"Este mensaje fue eliminado"*, deshabilitando opciones de edición en la interfaz.
+
+`bio_chat_channel_members` determina RLS para canal, mensaje, búsqueda, historial y recuperación vectorial. Los cursores de historial usan `(bio_created_at, bio_chat_message_id)`. Cuando el copiloto es consultado dentro de una conversación, `bio_fn_chat_shared_sightings()` recupera exclusivamente los avistamientos accesibles simultáneamente por todos los miembros del canal (intersección de acreditaciones RLS y autorías). Las citas persistidas usan el contrato canónico `source_type`, `source_reference` y `source_id`, y la función de escritura vuelve a verificar esa visibilidad compartida.
+
+## Gestión de investigadores y procedimientos almacenados
+
+La administración de usuarios se centraliza en procedimientos almacenados PostgreSQL definidos en `002_functions_and_triggers.sql`:
+- `bio_sp_get_active_researchers(INOUT p_cursor REFCURSOR)`: Retorna un cursor tipado con el directorio de investigadores activos.
+- `bio_sp_manage_researcher(p_researcher_id, p_full_name, p_role_title, p_is_active, p_accreditation_level)`: Valida la acreditación de nivel 3 del actor y ejecuta de forma atómica la edición o baja lógica (`bio_is_active = false`), impidiendo auto-bloqueos.
+
 
 ## Componentes transversales
 
@@ -60,4 +74,3 @@ El repositorio cuenta con integración continua en GitHub Actions (`.github/work
 - Validación de tipos TypeScript (`npx tsc --noEmit`) y compilación Vite de frontend.
 - Validación de configuración `docker compose config`.
 - Ejecución de migraciones y pruebas de seguridad RLS/RAG reales contra contenedor PostgreSQL (`docker compose --profile test run --rm database-tests`).
-

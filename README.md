@@ -11,6 +11,8 @@ Plataforma de monitoreo de fauna silvestre de la Fundación Yarumo. La seguridad
 
 El servicio `migrator` lleva un registro con checksum de cada migración. No se deben editar migraciones ya aplicadas: se agrega una nueva.
 
+El baseline canónico se compone de `001_core_schema.sql`, `002_functions_and_triggers.sql` y `003_seed_data.sql`. Las migraciones `004`–`009` son reparaciones hacia adelante para el worker, la persistencia/auditoría del copiloto, el historial/citas, contador y no leídos del chat y la rotación de refresh tokens; deben aplicarse también en instalaciones existentes.
+
 ## Inicio local
 
 1. Copia `.env.example` como `.env` y cambia todas las claves de ejemplo.
@@ -52,5 +54,3 @@ La plataforma completa está desplegada en **Railway** como un proyecto multi-se
 - **PostgreSQL**: PostgreSQL 16 con `pgvector`, RLS y migraciones automáticas.
 - **Redis**: Rate limiting distribuido y memoria de conversación para el Copiloto.
 - **Embedding Worker**: Procesamiento en segundo plano de notas y vectores de avistamientos.
-
-

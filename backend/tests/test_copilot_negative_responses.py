@@ -49,6 +49,7 @@ async def test_copilot_denies_transparently_when_rls_returns_no_authorized_conte
     assert answer.text == NO_AUTHORIZED_CONTEXT_RESPONSE
     assert answer.sources == ()
     assert answer.model_name == "bioma-policy"
+    assert answer.audit_usage_id == UUID("80000000-0000-0000-0000-000000000002")
     assert not copilot.called
     assert audit_calls[0]["sources"] == ()
 

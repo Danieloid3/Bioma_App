@@ -50,10 +50,14 @@ No introducir CQRS, event sourcing, mediators ni abstracciones genéricas sin un
 Si RLS no devuelve fuentes, el caso de uso responde `NO_AUTHORIZED_CONTEXT_RESPONSE` sin invocar al LLM y deja la auditoría registrada. Las pruebas unitarias de negativas viven en `tests/test_copilot_negative_responses.py`; las pruebas RLS/RAG contra PostgreSQL real viven en `database/tests/`.
 
 Los endpoints `/v1/copilot/conversations` y `/v1/copilot/conversations/{id}/messages` permiten gestionar hilos persistentes con aislamiento RLS completo. El endpoint `POST /v1/copilot/ask` asocia la consulta a un hilo activo, inyecta los mensajes previos de Redis y persiste la interacción.
-- `024_soft_delete_copilot_conversations.sql`: Soft delete y archivado para conversaciones (`bio_is_active`, `bio_archived_at`).
-- `025_restrict_edit_void_to_owner.sql`: Procedimientos `bio_sp_edit_sighting` y `bio_sp_void_sighting` restringidos estrictamente al investigador autor del avistamiento (`bio_researcher_id = v_actor_id`).
-- `026_robust_delete_copilot_conversation.sql`: Función `bio_fn_delete_copilot_conversation` con `SECURITY INVOKER` respetando políticas RLS de `bio_app_user`.
-- `027_enrich_species_and_sites_catalog.sql`: Catálogo científico descriptivo de especies y sitios con inyección de conocimiento biológico y de áreas protegidas al copiloto.
+- El baseline canónico concentra DDL/RLS en `001_core_schema.sql`, funciones/triggers en `002_functions_and_triggers.sql` y corpus en `003_seed_data.sql`.
+- `004_hotfix_copilot.sql` restaura el worker de embeddings de chat tras la consolidación.
+- `005_repair_copilot_persistence.sql` repara auditoría, persistencia de turnos, resumen de consumo y RLS de citas. Un turno reutiliza el `bio_copilot_usage_id` devuelto por la auditoría y nunca crea una segunda fila de consumo.
+- `006_repair_chat_history_and_citations.sql` alinea historial y persistencia de citas del chat con el modelo canónico (`source_type`, `source_reference`, `source_id`) y valida que cada fuente sea visible para todos los miembros del canal.
+- `007_repair_refresh_token_rotation.sql` restaura el contrato completo del actor durante la rotación y enlaza cada token hijo con el token original usado.
+- `008_fix_chat_message_counter.sql` evita multiplicar el conteo de mensajes por el número de integrantes al listar canales.
+- `009_chat_unread_receipts.sql` añade el contador de no leídos por actor y marca como leídos los recibos al abrir el historial.
+
 
 
 
@@ -71,6 +75,10 @@ Implementación local: `RedisRateLimiter` usa un script Lua atómico (`INCR` + `
 
 No hay excepción para prompts de usuarios, administradores o proveedores: contexto no autorizado nunca llega al modelo. LangChain es un adaptador, no el núcleo del dominio.
 
+## Chat interno y copiloto compartido
+
+Los canales internos aplican RLS por membresía. Cuando `@copilot` se invoca dentro de un canal, PostgreSQL recupera mensajes del canal y avistamientos únicamente si todos los miembros activos podrían verlos individualmente: la acreditación alta de una persona nunca amplía el contexto visible para otra. Las fuentes de mensaje usan referencias `msg-*`; las de avistamiento, `obs-*`.
+
 Configuración inicial: `gpt-5.6-terra` para conversación RAG (equilibrio de calidad y coste) y `text-embedding-3-small` para embeddings de 1536 dimensiones, compatibles con la columna `vector(1536)` de PostgreSQL.
 
 Los investigadores persisten una clave de avatar dentro de una biblioteca cerrada. La autenticación y el directorio la devuelven como dato de presentación; un futuro caso de uso de alta usará `secrets.choice` y nunca aceptará un URL o clave arbitraria del cliente.
@@ -81,6 +89,10 @@ Los investigadores persisten una clave de avatar dentro de una biblioteca cerrad
 - Cada caso de uso debe tener una responsabilidad y ser testeable con puertos falsos.
 - Preferir transacciones pequeñas y manejar `rollback` por excepción.
 - Validar límites de page size, cursores completos, UUID y UTC.
+- Enrutamiento FastAPI: declarar rutas estáticas específicas (ej. `/search`) antes de rutas paramétricas dinámicas (ej. `/{sighting_id}`) para evitar colisiones de validación de tipo (422).
 - No guardar claves API, JWT secrets, refresh tokens planos ni hashes de contraseña en logs.
 - CI ejecuta `ruff`, pruebas unitarias y `docker build`; las pruebas que requieran PostgreSQL se ejecutan adicionalmente con el perfil `test` de Compose.
 - Actualizar este archivo al hacer commit si cambia esta arquitectura, patrón, dependencia, flujo de seguridad o comando backend.
+
+
+- `003_seed_data.sql` contiene 11 investigadores con diversos niveles y especialidades para simular la interfaz y probar integralmente RLS y RAG.

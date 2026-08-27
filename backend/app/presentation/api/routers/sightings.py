@@ -60,18 +60,22 @@ class VoidSightingRequest(BaseModel):
     reason: str = Field(min_length=1, max_length=500)
 
 
-@router.get("/{sighting_id}", responses=COMMON_ERROR_RESPONSES)
-async def get_sighting_detail(
-    sighting_id: UUID, actor_connection: ActorConnection
-) -> object:
+@router.get("/search", responses=COMMON_ERROR_RESPONSES)
+async def search_sightings(
+    actor_connection: ActorConnection,
+    term: str = Query(min_length=1, max_length=200),
+    cursor_observed_at: datetime | None = None,
+    cursor_sighting_id: UUID | None = None,
+    page_size: int = Query(default=20, ge=1, le=100),
+) -> dict[str, object]:
     _, connection = actor_connection
-    detail = await GetSightingDetail(PostgresSightingRepository(connection)).execute(
-        sighting_id=sighting_id
+    items = await SearchSightings(PostgresSightingRepository(connection)).execute(
+        term=term,
+        cursor_observed_at=cursor_observed_at,
+        cursor_sighting_id=cursor_sighting_id,
+        page_size=page_size,
     )
-    if detail is None:
-        # A forbidden row is indistinguishable from an unknown UUID by design.
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    return detail
+    return {"items": items}
 
 
 @router.get("", responses=COMMON_ERROR_RESPONSES)
@@ -105,22 +109,19 @@ async def register_sighting(
     return {"sighting_id": sighting_id}
 
 
-@router.get("/search", responses=COMMON_ERROR_RESPONSES)
-async def search_sightings(
-    actor_connection: ActorConnection,
-    term: str = Query(min_length=1, max_length=200),
-    cursor_observed_at: datetime | None = None,
-    cursor_sighting_id: UUID | None = None,
-    page_size: int = Query(default=20, ge=1, le=100),
-) -> dict[str, object]:
+@router.get("/{sighting_id}", responses=COMMON_ERROR_RESPONSES)
+async def get_sighting_detail(
+    sighting_id: UUID, actor_connection: ActorConnection
+) -> object:
     _, connection = actor_connection
-    items = await SearchSightings(PostgresSightingRepository(connection)).execute(
-        term=term,
-        cursor_observed_at=cursor_observed_at,
-        cursor_sighting_id=cursor_sighting_id,
-        page_size=page_size,
+    detail = await GetSightingDetail(PostgresSightingRepository(connection)).execute(
+        sighting_id=sighting_id
     )
-    return {"items": items}
+    if detail is None:
+        # A forbidden row is indistinguishable from an unknown UUID by design.
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    return detail
+
 
 
 @router.patch(

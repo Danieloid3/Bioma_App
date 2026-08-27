@@ -1,0 +1,87 @@
+﻿erDiagram
+    bio_researchers ||--o{ bio_sightings : "registra"
+    bio_species ||--o{ bio_species_images : "tiene_fotos"
+    bio_species ||--o{ bio_sightings : "clasificada_en"
+    bio_sites ||--o{ bio_sightings : "ocurre_en"
+    bio_sites ||--o{ bio_site_images : "tiene_fotos"
+    bio_researchers ||--o{ bio_sighting_revisions : "modifica"
+    bio_sightings ||--o{ bio_sighting_revisions : "conserva_historial"
+
+    bio_researchers {
+        UUID bio_researcher_id PK
+        VARCHAR bio_full_name
+        SMALLINT bio_accreditation_level
+        BOOLEAN bio_is_active
+    }
+
+    bio_species {
+        UUID bio_species_id PK
+        VARCHAR bio_scientific_name UK
+        VARCHAR bio_common_name
+        VARCHAR bio_iucn_category
+        TEXT bio_description
+        TEXT bio_habitat
+        TEXT bio_diet
+        TEXT bio_conservation_status
+    }
+
+    bio_species_images {
+        UUID bio_species_image_id PK
+        UUID bio_species_id FK
+        TEXT bio_display_url
+        TEXT bio_source_url
+        TEXT bio_attribution
+        VARCHAR bio_license_code
+        BOOLEAN bio_is_featured
+        BOOLEAN bio_is_active
+    }
+
+    bio_sites {
+        UUID bio_site_id PK
+        VARCHAR bio_site_name
+        VARCHAR bio_region
+        VARCHAR bio_ecosystem
+        TEXT bio_description
+    }
+
+    bio_site_images {
+        UUID bio_site_image_id PK
+        UUID bio_site_id FK
+        TEXT bio_display_url
+        TEXT bio_attribution
+        VARCHAR bio_license_code
+        BOOLEAN bio_is_featured
+        BOOLEAN bio_is_active
+    }
+
+    bio_sightings {
+        UUID bio_sighting_id PK
+        VARCHAR bio_observation_reference UK
+        UUID bio_researcher_id FK
+        UUID bio_species_id FK
+        UUID bio_site_id FK
+        NUMERIC bio_exact_latitude
+        NUMERIC bio_exact_longitude
+        TIMESTAMPTZ bio_observed_at
+        SMALLINT bio_classification_level
+        TEXT bio_field_notes
+        VECTOR bio_field_notes_embedding
+        VARCHAR bio_embedding_status
+        VARCHAR bio_embedding_model
+        INTEGER bio_embedding_attempts
+        BOOLEAN bio_is_voided
+    }
+
+    bio_sighting_revisions {
+        UUID bio_sighting_revision_id PK
+        UUID bio_sighting_id FK
+        UUID bio_changed_by_researcher_id FK
+        INTEGER bio_revision_number
+        VARCHAR bio_change_type
+        SMALLINT bio_previous_classification_level
+        NUMERIC bio_previous_exact_latitude
+        NUMERIC bio_previous_exact_longitude
+        TEXT bio_previous_field_notes
+        TEXT bio_change_reason
+        TIMESTAMPTZ bio_created_at
+    }

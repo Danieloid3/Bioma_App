@@ -1,0 +1,27 @@
+﻿erDiagram
+    bio_researchers ||--o{ bio_refresh_tokens : "posee_tokens"
+
+    bio_researchers {
+        UUID bio_researcher_id PK
+        CITEXT bio_email UK
+        VARCHAR bio_full_name
+        VARCHAR bio_password_hash
+        VARCHAR bio_role_title
+        SMALLINT bio_accreditation_level
+        VARCHAR bio_avatar_key
+        BOOLEAN bio_is_active
+        TIMESTAMPTZ bio_created_at
+    }
+
+    bio_refresh_tokens {
+        UUID bio_refresh_token_id PK
+        UUID bio_researcher_id FK
+        UUID bio_token_family_id
+        UUID bio_parent_refresh_token_id FK
+        VARCHAR bio_token_hash UK
+        TIMESTAMPTZ bio_expires_at
+        TIMESTAMPTZ bio_used_at
+        TIMESTAMPTZ bio_revoked_at
+        VARCHAR bio_revocation_reason
+        TIMESTAMPTZ bio_created_at
+    }

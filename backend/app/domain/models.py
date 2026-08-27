@@ -51,6 +51,7 @@ class CopilotSource:
     similarity: float
     site_name: str | None = None
     region: str | None = None
+    source_type: str = "sighting"
 
 
 
@@ -82,6 +83,7 @@ class CopilotAnswer:
     model_name: str
     input_tokens: int
     output_tokens: int
+    audit_usage_id: UUID | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,6 +104,36 @@ class CopilotMessageItem:
     model_name: str | None
     created_at: datetime
     citations: tuple[CopilotSource, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ChatChannelItem:
+    channel_id: UUID
+    channel_type: str
+    name: str | None
+    created_at: datetime
+    updated_at: datetime
+    message_count: int
+    unread_count: int
+    last_message_at: datetime | None
+    display_name: str
+
+
+@dataclass(frozen=True, slots=True)
+class ChatMessageItem:
+    message_id: UUID
+    channel_id: UUID
+    author_id: UUID | None
+    author_name: str
+    sender_role: str
+    message_text: str
+    is_edited: bool
+    created_at: datetime
+    is_deleted: bool = False
+    read_count: int = 0
+    citations: tuple[dict[str, str], ...] = ()
+
+
 
 
 

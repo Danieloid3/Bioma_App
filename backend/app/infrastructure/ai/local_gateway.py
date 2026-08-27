@@ -3,7 +3,12 @@ import math
 import re
 from collections.abc import Sequence
 
-from app.domain.models import ConversationMessage, CopilotAnswer, CopilotSource
+from app.domain.models import (
+    CatalogKnowledgeItem,
+    ConversationMessage,
+    CopilotAnswer,
+    CopilotSource,
+)
 
 
 class LocalAiGateway:
@@ -52,6 +57,7 @@ class LocalAiGateway:
         sources: Sequence[CopilotSource],
         system_prompt: str,
         history: Sequence[ConversationMessage] = (),
+        catalog_knowledge: Sequence[CatalogKnowledgeItem] = (),
     ) -> CopilotAnswer:
         if not sources:
             return CopilotAnswer(

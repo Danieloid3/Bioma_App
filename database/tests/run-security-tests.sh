@@ -12,4 +12,7 @@ trap cleanup EXIT
 psql "$DATABASE_ADMIN_URL" -v ON_ERROR_STOP=1 -f /migrations/tests/prepare_rag_test_data.sql
 hidden_sighting_id=$(psql "$DATABASE_ADMIN_URL" -At -v ON_ERROR_STOP=1 -c "SELECT bio_sighting_id FROM bio_sightings WHERE bio_observation_reference = 'obs-5001'")
 psql "$DATABASE_APP_URL" -v ON_ERROR_STOP=1 -v "hidden_sighting_id=$hidden_sighting_id" -f /migrations/tests/rls_assertions.sql
-echo "RLS and RAG security assertions passed."
+psql "$DATABASE_APP_URL" -v ON_ERROR_STOP=1 -f /migrations/tests/chat_counter_assertions.sql
+psql "$DATABASE_APP_URL" -v ON_ERROR_STOP=1 -f /migrations/tests/chat_counter_assertions.sql
+psql "$DATABASE_ADMIN_URL" -v ON_ERROR_STOP=1 -f /migrations/tests/refresh_rotation_assertions.sql
+echo "RLS, RAG, chat and refresh-token security assertions passed."

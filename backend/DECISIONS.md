@@ -14,7 +14,9 @@ Los puertos `EmbeddingProvider` y `CopilotProvider` aíslan LangChain/OpenAI. `R
 
 ## RAG con transacciones separadas
 
-La recuperación de contexto y la auditoría usan transacciones independientes. La red del proveedor IA nunca mantiene una conexión PostgreSQL abierta. Las citas se persisten junto con el uso del copiloto.
+La recuperación de contexto y la auditoría usan transacciones independientes. La red del proveedor IA nunca mantiene una conexión PostgreSQL abierta. Las citas se persisten junto con un único uso del copiloto y el mensaje del hilo enlaza esa misma auditoría, evitando duplicar consumo.
+
+En canales compartidos, las citas del copiloto se representan como fuentes tipadas y PostgreSQL valida que mensajes y avistamientos sean visibles para todos los miembros activos antes de insertarlas.
 
 ## Denegación sin contexto autorizado
 

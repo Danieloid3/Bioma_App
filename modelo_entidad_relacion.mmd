@@ -1,27 +1,39 @@
-﻿erDiagram
+erDiagram
     bio_researchers ||--o{ bio_sightings : records
+    bio_species ||--o{ bio_species_images : has
     bio_species ||--o{ bio_sightings : observed_in
+    bio_sites ||--o{ bio_site_images : has
     bio_sites ||--o{ bio_sightings : located_at
     bio_researchers ||--o{ bio_sighting_revisions : changes
     bio_sightings ||--o{ bio_sighting_revisions : preserves
     bio_researchers ||--o{ bio_refresh_tokens : owns
+    bio_refresh_tokens o|--o{ bio_refresh_tokens : rotates_from
     bio_researchers ||--o{ bio_copilot_usage : asks
     bio_copilot_usage ||--o{ bio_copilot_citations : cites
     bio_sightings ||--o{ bio_copilot_citations : source_for
     bio_researchers ||--o{ bio_copilot_conversations : owns
     bio_copilot_conversations ||--o{ bio_copilot_messages : contains
-    bio_researchers ||--o{ bio_copilot_messages : sends
-    bio_copilot_usage ||--o{ bio_copilot_messages : audited_in
-    bio_sightings ||--o| bio_embedding_jobs : enqueued_for
+    bio_researchers o|--o{ bio_copilot_messages : sends
+    bio_copilot_usage o|--o| bio_copilot_messages : audited_in
+    bio_researchers ||--o{ bio_chat_channels : creates
+    bio_researchers ||--o{ bio_chat_channel_members : joins
+    bio_chat_channels ||--o{ bio_chat_channel_members : has
+    bio_chat_channels ||--o{ bio_chat_messages : contains
+    bio_researchers o|--o{ bio_chat_messages : authors
+    bio_chat_messages ||--o{ bio_chat_message_versions : preserves
+    bio_researchers ||--o{ bio_chat_message_versions : changes
+    bio_chat_messages ||--o{ bio_chat_message_receipts : tracks
+    bio_researchers ||--o{ bio_chat_message_receipts : reads
+    bio_chat_messages ||--o{ bio_chat_copilot_citations : cites
 
     bio_researchers {
         UUID bio_researcher_id PK
-        CITEXT bio_email UK
         VARCHAR bio_full_name
+        CITEXT bio_email UK
         VARCHAR bio_password_hash
         VARCHAR bio_role_title
         SMALLINT bio_accreditation_level
-        VARCHAR bio_animal_avatar_key
+        VARCHAR bio_avatar_key
         BOOLEAN bio_is_active
         TIMESTAMPTZ bio_created_at
         TIMESTAMPTZ bio_updated_at
@@ -29,18 +41,31 @@
 
     bio_species {
         UUID bio_species_id PK
-        VARCHAR bio_scientific_name UK
         VARCHAR bio_common_name
+        VARCHAR bio_scientific_name UK
         VARCHAR bio_iucn_category
         TEXT bio_description
         TEXT bio_habitat
         TEXT bio_diet
         TEXT bio_conservation_status
-        TEXT bio_curated_image_url
-        TEXT bio_curated_image_alt_text_es
-        TEXT bio_curated_image_attribution
-        VARCHAR bio_curated_image_license_code
         TIMESTAMPTZ bio_created_at
+        TIMESTAMPTZ bio_updated_at
+    }
+
+    bio_species_images {
+        UUID bio_species_image_id PK
+        UUID bio_species_id FK
+        TEXT bio_display_url
+        TEXT bio_source_url
+        VARCHAR bio_alt_text_es
+        VARCHAR bio_alt_text_en
+        TEXT bio_attribution
+        VARCHAR bio_license_code
+        TEXT bio_license_url
+        BOOLEAN bio_is_featured
+        BOOLEAN bio_is_active
+        TIMESTAMPTZ bio_created_at
+        TIMESTAMPTZ bio_updated_at
     }
 
     bio_sites {
@@ -49,11 +74,24 @@
         VARCHAR bio_region
         TEXT bio_description
         VARCHAR bio_ecosystem
-        TEXT bio_curated_image_url
-        TEXT bio_curated_image_alt_text_es
-        TEXT bio_curated_image_attribution
-        VARCHAR bio_curated_image_license_code
         TIMESTAMPTZ bio_created_at
+        TIMESTAMPTZ bio_updated_at
+    }
+
+    bio_site_images {
+        UUID bio_site_image_id PK
+        UUID bio_site_id FK
+        TEXT bio_display_url
+        TEXT bio_source_url
+        VARCHAR bio_alt_text_es
+        VARCHAR bio_alt_text_en
+        TEXT bio_attribution
+        VARCHAR bio_license_code
+        TEXT bio_license_url
+        BOOLEAN bio_is_featured
+        BOOLEAN bio_is_active
+        TIMESTAMPTZ bio_created_at
+        TIMESTAMPTZ bio_updated_at
     }
 
     bio_sightings {
@@ -62,15 +100,21 @@
         UUID bio_researcher_id FK
         UUID bio_species_id FK
         UUID bio_site_id FK
+        TIMESTAMPTZ bio_observed_at
         NUMERIC bio_exact_latitude
         NUMERIC bio_exact_longitude
-        TIMESTAMPTZ bio_observed_at
         SMALLINT bio_classification_level
         TEXT bio_field_notes
         VECTOR bio_field_notes_embedding
+        VARCHAR bio_embedding_status
+        VARCHAR bio_embedding_model
+        INTEGER bio_embedding_attempts
+        TEXT bio_embedding_error
+        TIMESTAMPTZ bio_embedded_at
         BOOLEAN bio_is_voided
         TIMESTAMPTZ bio_voided_at
-        VARCHAR bio_void_reason
+        UUID bio_voided_by_researcher_id FK
+        TEXT bio_void_reason
         TIMESTAMPTZ bio_created_at
         TIMESTAMPTZ bio_updated_at
     }
@@ -78,15 +122,14 @@
     bio_sighting_revisions {
         UUID bio_sighting_revision_id PK
         UUID bio_sighting_id FK
-        UUID bio_changed_by_researcher_id FK
         INTEGER bio_revision_number
+        UUID bio_changed_by_researcher_id FK
         VARCHAR bio_change_type
-        NUMERIC bio_exact_latitude
-        NUMERIC bio_exact_longitude
-        SMALLINT bio_classification_level
-        TEXT bio_field_notes
-        TIMESTAMPTZ bio_observed_at
-        BOOLEAN bio_is_voided
+        SMALLINT bio_previous_classification_level
+        NUMERIC bio_previous_exact_latitude
+        NUMERIC bio_previous_exact_longitude
+        TEXT bio_previous_field_notes
+        TEXT bio_change_reason
         TIMESTAMPTZ bio_created_at
     }
 
@@ -97,7 +140,30 @@
         UUID bio_parent_refresh_token_id FK
         VARCHAR bio_token_hash UK
         TIMESTAMPTZ bio_expires_at
+        TIMESTAMPTZ bio_used_at
         TIMESTAMPTZ bio_revoked_at
+        VARCHAR bio_revocation_reason
+        TIMESTAMPTZ bio_created_at
+    }
+
+    bio_copilot_usage {
+        UUID bio_copilot_usage_id PK
+        UUID bio_researcher_id FK
+        TEXT bio_prompt_text
+        TEXT bio_response_text
+        VARCHAR bio_system_prompt_version
+        VARCHAR bio_model_name
+        INTEGER bio_input_tokens
+        INTEGER bio_output_tokens
+        TIMESTAMPTZ bio_created_at
+    }
+
+    bio_copilot_citations {
+        UUID bio_copilot_citation_id PK
+        UUID bio_copilot_usage_id FK
+        UUID bio_sighting_id FK
+        SMALLINT bio_rank
+        NUMERIC bio_similarity
         TIMESTAMPTZ bio_created_at
     }
 
@@ -124,33 +190,67 @@
         TIMESTAMPTZ bio_created_at
     }
 
-    bio_copilot_usage {
-        UUID bio_copilot_usage_id PK
-        UUID bio_researcher_id FK
-        TEXT bio_prompt_text
-        TEXT bio_response_text
-        VARCHAR bio_system_prompt_version
-        VARCHAR bio_model_name
-        INTEGER bio_input_tokens
-        INTEGER bio_output_tokens
+    bio_chat_channels {
+        UUID bio_chat_channel_id PK
+        UUID bio_created_by_researcher_id FK
+        VARCHAR bio_channel_type
+        VARCHAR bio_name
+        BOOLEAN bio_is_active
+        TIMESTAMPTZ bio_created_at
+        TIMESTAMPTZ bio_updated_at
+    }
+
+    bio_chat_channel_members {
+        UUID bio_chat_channel_id PK,FK
+        UUID bio_researcher_id PK,FK
+        VARCHAR bio_member_role
+        TIMESTAMPTZ bio_joined_at
+        TIMESTAMPTZ bio_left_at
+    }
+
+    bio_chat_messages {
+        UUID bio_chat_message_id PK
+        UUID bio_chat_channel_id FK
+        UUID bio_author_researcher_id FK
+        VARCHAR bio_sender_role
+        TEXT bio_message_text
+        TSVECTOR bio_search_document
+        VECTOR bio_message_embedding
+        VARCHAR bio_embedding_status
+        VARCHAR bio_embedding_model
+        INTEGER bio_embedding_attempts
+        TEXT bio_embedding_error
+        TIMESTAMPTZ bio_embedded_at
+        BOOLEAN bio_is_edited
+        BOOLEAN bio_is_deleted
+        TIMESTAMPTZ bio_deleted_at
+        UUID bio_deleted_by_researcher_id FK
+        TIMESTAMPTZ bio_created_at
+        TIMESTAMPTZ bio_updated_at
+    }
+
+    bio_chat_message_versions {
+        UUID bio_chat_message_version_id PK
+        UUID bio_chat_message_id FK
+        INTEGER bio_version_number
+        TEXT bio_message_text
+        VARCHAR bio_change_type
+        UUID bio_changed_by_researcher_id FK
         TIMESTAMPTZ bio_created_at
     }
 
-    bio_copilot_citations {
-        UUID bio_copilot_citation_id PK
-        UUID bio_copilot_usage_id FK
-        UUID bio_sighting_id FK
+    bio_chat_message_receipts {
+        UUID bio_chat_message_id PK,FK
+        UUID bio_researcher_id PK,FK
+        TIMESTAMPTZ bio_read_at
+    }
+
+    bio_chat_copilot_citations {
+        UUID bio_chat_copilot_citation_id PK
+        UUID bio_chat_message_id FK
+        VARCHAR bio_source_type
+        VARCHAR bio_source_reference
+        UUID bio_source_id
         SMALLINT bio_rank
-        NUMERIC bio_similarity
         TIMESTAMPTZ bio_created_at
-    }
-
-    bio_embedding_jobs {
-        UUID bio_embedding_job_id PK
-        UUID bio_sighting_id FK
-        VARCHAR bio_status
-        TEXT bio_payload_text
-        INTEGER bio_attempts
-        TIMESTAMPTZ bio_created_at
-        TIMESTAMPTZ bio_processed_at
     }

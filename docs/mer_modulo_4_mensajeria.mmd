@@ -1,0 +1,62 @@
+﻿erDiagram
+    bio_researchers ||--o{ bio_chat_channel_members : "pertenece_a"
+    bio_chat_channels ||--o{ bio_chat_channel_members : "tiene_miembros"
+    bio_chat_channels ||--o{ bio_chat_messages : "alberga"
+    bio_researchers ||--o{ bio_chat_messages : "escribe"
+    bio_chat_messages ||--o{ bio_chat_message_versions : "archiva_versiones"
+    bio_chat_messages ||--o{ bio_chat_message_receipts : "recibo_lectura"
+    bio_chat_messages ||--o{ bio_chat_copilot_citations : "citas_del_copiloto"
+
+    bio_chat_channels {
+        UUID bio_chat_channel_id PK
+        UUID bio_created_by_researcher_id FK
+        VARCHAR bio_channel_type
+        VARCHAR bio_name
+        BOOLEAN bio_is_active
+    }
+
+    bio_chat_channel_members {
+        UUID bio_chat_channel_id PK,FK
+        UUID bio_researcher_id PK,FK
+        VARCHAR bio_member_role
+        TIMESTAMPTZ bio_joined_at
+        TIMESTAMPTZ bio_left_at
+    }
+
+    bio_chat_messages {
+        UUID bio_chat_message_id PK
+        UUID bio_chat_channel_id FK
+        UUID bio_author_researcher_id FK
+        VARCHAR bio_sender_role
+        TEXT bio_message_text
+        TSVECTOR bio_search_document
+        BOOLEAN bio_is_edited
+        BOOLEAN bio_is_deleted
+        VECTOR bio_message_embedding
+        VARCHAR bio_embedding_status
+    }
+
+    bio_chat_message_versions {
+        UUID bio_chat_message_version_id PK
+        UUID bio_chat_message_id FK
+        INTEGER bio_version_number
+        TEXT bio_message_text
+        VARCHAR bio_change_type
+        UUID bio_changed_by_researcher_id FK
+        TIMESTAMPTZ bio_created_at
+    }
+
+    bio_chat_message_receipts {
+        UUID bio_chat_message_id PK,FK
+        UUID bio_researcher_id PK,FK
+        TIMESTAMPTZ bio_read_at
+    }
+
+    bio_chat_copilot_citations {
+        UUID bio_chat_copilot_citation_id PK
+        UUID bio_chat_message_id FK
+        VARCHAR bio_source_type
+        VARCHAR bio_source_reference
+        UUID bio_source_id
+        SMALLINT bio_rank
+    }

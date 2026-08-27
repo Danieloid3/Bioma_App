@@ -10,6 +10,8 @@ from app.domain.models import (
     ActivityItem,
     Actor,
     CatalogKnowledgeItem,
+    ChatChannelItem,
+    ChatMessageItem,
     ClassificationCount,
     CopilotConversationItem,
     CopilotMessageItem,
@@ -350,6 +352,104 @@ class PostgresDashboardRepository:
         ]
 
 
+class PostgresChatRepository:
+    """SQL adapter for chat. Every instance is created inside actor_transaction."""
+
+    def __init__(self, connection: asyncpg.Connection) -> None:
+        self._connection = connection
+
+    async def list_channels(self) -> list[ChatChannelItem]:
+        rows = await self._connection.fetch(
+            """
+            SELECT v.*, COALESCE(v.bio_name, (
+                SELECT r.bio_full_name
+                FROM bio_chat_channel_members m
+                JOIN bio_researchers r ON r.bio_researcher_id = m.bio_researcher_id
+                WHERE m.bio_chat_channel_id = v.channel_id
+                  AND m.bio_researcher_id <> nullif(current_setting('app.current_user_id', true), '')::uuid
+                  AND m.bio_left_at IS NULL
+                LIMIT 1
+            ), 'Conversación') AS display_name
+            FROM bio_v_my_chat_conversations v
+            ORDER BY v.last_message_at DESC NULLS LAST, v.bio_created_at DESC
+            """
+        )
+        return [
+            ChatChannelItem(
+                channel_id=row["channel_id"], channel_type=row["bio_channel_type"],
+                name=row["bio_name"], created_at=row["bio_created_at"],
+                updated_at=row["bio_updated_at"], message_count=row["message_count"],
+                unread_count=row["unread_count"],
+                last_message_at=row["last_message_at"], display_name=row["display_name"],
+            ) for row in rows
+        ]
+
+    async def create_channel(self, channel_type: str, name: str | None, member_ids: list[UUID]) -> UUID:
+        return await self._connection.fetchval(
+            "SELECT bio_fn_create_chat_channel($1, $2, $3::uuid[])", channel_type, name, member_ids
+        )
+
+    async def history(self, channel_id: UUID, cursor_created_at: datetime | None, cursor_message_id: UUID | None, limit: int) -> list[ChatMessageItem]:
+        await self._connection.execute("SELECT bio_fn_mark_chat_channel_read($1)", channel_id)
+        rows = await self._connection.fetch(
+            "SELECT * FROM bio_fn_chat_history($1, $2, $3, $4)", channel_id, cursor_created_at, cursor_message_id, limit
+        )
+        return [
+            ChatMessageItem(
+                message_id=row["message_id"], channel_id=row["channel_id"], author_id=row["author_id"],
+                author_name=row["author_name"], message_text=row["message_text"],
+                sender_role=row.get("sender_role", "user"), is_edited=row.get("is_edited", False),
+                is_deleted=row.get("is_deleted", False), created_at=row["created_at"], read_count=row.get("read_count", 0),
+                citations=tuple(json.loads(row["citations"]) if isinstance(row["citations"], str) else (row["citations"] or ())),
+            ) for row in rows
+
+        ]
+
+    async def send(self, channel_id: UUID, text: str) -> UUID:
+        return await self._connection.fetchval("SELECT bio_fn_send_chat_message($1, $2)", channel_id, text)
+
+    async def edit(self, message_id: UUID, text: str) -> None:
+        await self._connection.execute("SELECT bio_fn_edit_chat_message($1, $2)", message_id, text)
+
+    async def delete(self, message_id: UUID) -> None:
+        await self._connection.execute("SELECT bio_fn_delete_chat_message($1)", message_id)
+
+    async def retrieve_shared_sighting_context(
+        self, channel_id: UUID, embedding: Sequence[float], limit: int = 5
+    ) -> list[CopilotSource]:
+        rows = await self._connection.fetch(
+            "SELECT * FROM bio_fn_retrieve_chat_shared_sighting_context($1, $2::vector, $3)",
+            channel_id, str(list(embedding)), limit,
+        )
+        return [
+            CopilotSource(
+                sighting_id=row["sighting_id"], observation_reference=row["observation_reference"],
+                species_common_name=row["species_common_name"], field_notes=row["field_notes"],
+                site_name=row["site_name"], region=row["region"], similarity=float(row["similarity"]),
+            ) for row in rows
+        ]
+
+    async def retrieve_message_context(
+        self, channel_id: UUID, embedding: Sequence[float], limit: int = 5
+    ) -> list[CopilotSource]:
+        rows = await self._connection.fetch(
+            "SELECT * FROM bio_fn_retrieve_chat_message_context($1, $2::vector, $3)",
+            channel_id, str(list(embedding)), limit,
+        )
+        return [
+            CopilotSource(
+                sighting_id=row["message_id"], observation_reference=row["source_reference"],
+                species_common_name=row["author_name"], field_notes=row["message_text"],
+                similarity=float(row["similarity"]), source_type="message",
+            ) for row in rows
+        ]
+
+    async def record_copilot_response(self, channel_id: UUID, text: str, sources: list[dict[str, str]]) -> UUID:
+        return await self._connection.fetchval(
+            "SELECT bio_fn_record_chat_copilot_response($1, $2, $3::jsonb)", channel_id, text, json.dumps(sources)
+        )
+
+
 class PostgresCopilotAuditRepository:
     def __init__(self, connection: asyncpg.Connection) -> None:
         self._connection = connection
@@ -373,8 +473,8 @@ class PostgresCopilotAuditRepository:
             model_name,
             input_tokens,
             output_tokens,
-            [source.sighting_id for source in sources],
-            [source.similarity for source in sources],
+            [source.sighting_id for source in sources if source.source_type == "sighting"],
+            [source.similarity for source in sources if source.source_type == "sighting"],
         )
 
 
@@ -439,25 +539,16 @@ class PostgresCopilotConversationRepository:
         self,
         *,
         conversation_id: UUID,
+        usage_id: UUID,
         prompt: str,
         answer: str,
-        system_prompt_version: str,
-        model_name: str,
-        input_tokens: int,
-        output_tokens: int,
-        sources: Sequence[CopilotSource],
     ) -> tuple[UUID, UUID, UUID]:
         row = await self._connection.fetchrow(
-            "SELECT * FROM bio_fn_record_copilot_turn($1, $2, $3, $4, $5, $6, $7, $8::uuid[], $9::numeric[])",
+            "SELECT * FROM bio_fn_record_copilot_turn($1, $2, $3, $4)",
             conversation_id,
+            usage_id,
             prompt,
             answer,
-            system_prompt_version,
-            model_name,
-            input_tokens,
-            output_tokens,
-            [source.sighting_id for source in sources],
-            [source.similarity for source in sources],
         )
         return row["usage_id"], row["user_message_id"], row["assistant_message_id"]
 

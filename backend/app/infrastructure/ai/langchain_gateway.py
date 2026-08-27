@@ -56,12 +56,13 @@ class LangChainOpenAIGateway:
             sections.append("\n".join(cat_lines))
 
         if sources:
-            context_blocks: list[str] = ["=== Avistamientos de Campo Autorizados ==="]
+            context_blocks: list[str] = ["=== Evidencia autorizada ==="]
             for source in sources:
-                loc = f" (Sitio: {source.site_name}, {source.region})" if source.site_name else ""
-                context_blocks.append(
-                    f"[{source.observation_reference}] Especie: {source.species_common_name}{loc}. Notas de campo: {source.field_notes}"
-                )
+                if source.source_type == "message":
+                    context_blocks.append(f"[{source.observation_reference}] Mensaje de {source.species_common_name}: {source.field_notes}")
+                else:
+                    loc = f" (Sitio: {source.site_name}, {source.region})" if source.site_name else ""
+                    context_blocks.append(f"[{source.observation_reference}] Especie: {source.species_common_name}{loc}. Notas de campo: {source.field_notes}")
             sections.append("\n".join(context_blocks))
 
         sections.append(f"Pregunta del investigador: {question}")
@@ -87,5 +88,4 @@ class LangChainOpenAIGateway:
             input_tokens=int(usage.get("input_tokens", 0)),
             output_tokens=int(usage.get("output_tokens", 0)),
         )
-
 

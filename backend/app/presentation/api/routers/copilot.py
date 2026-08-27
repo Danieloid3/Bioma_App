@@ -7,10 +7,7 @@ import asyncpg
 from fastapi import APIRouter, Depends, Response, status
 from pydantic import BaseModel, Field
 
-from app.application.use_cases.answer_copilot_question import (
-    SYSTEM_PROMPT_VERSION,
-    AnswerCopilotQuestion,
-)
+from app.application.use_cases.answer_copilot_question import AnswerCopilotQuestion
 from app.domain.errors import RateLimitExceeded
 from app.domain.models import Actor, CatalogKnowledgeItem, CopilotSource
 from app.infrastructure.ai.factory import build_ai_gateway
@@ -265,18 +262,16 @@ async def ask(
         catalog=retrieve_catalog,
     ).execute(actor=actor, question=payload.question, history=recent_messages)
 
+    if answer.audit_usage_id is None:
+        raise RuntimeError("copilot audit did not return a usage identifier")
 
     # 5. Persist turn in PostgreSQL under RLS
     async with database.actor_transaction(actor.researcher_id) as connection:
         await PostgresCopilotConversationRepository(connection).record_turn(
             conversation_id=target_conversation_id,
+            usage_id=answer.audit_usage_id,
             prompt=payload.question.strip(),
             answer=answer.text,
-            system_prompt_version=SYSTEM_PROMPT_VERSION,
-            model_name=answer.model_name,
-            input_tokens=answer.input_tokens,
-            output_tokens=answer.output_tokens,
-            sources=answer.sources,
         )
 
     # 6. Append turn to Redis 16-message context

@@ -1,0 +1,46 @@
+﻿erDiagram
+    bio_researchers ||--o{ bio_copilot_conversations : "inicia_hilo"
+    bio_copilot_conversations ||--o{ bio_copilot_messages : "contiene"
+    bio_researchers ||--o{ bio_copilot_messages : "envia_pregunta"
+    bio_researchers ||--o{ bio_copilot_usage : "audita_consumo"
+    bio_copilot_usage ||--o{ bio_copilot_citations : "evidencia_citas"
+    bio_sightings ||--o{ bio_copilot_citations : "avistamiento_fuente"
+
+    bio_copilot_conversations {
+        UUID bio_conversation_id PK
+        UUID bio_researcher_id FK
+        VARCHAR bio_title
+        BOOLEAN bio_is_active
+        TIMESTAMPTZ bio_archived_at
+    }
+
+    bio_copilot_messages {
+        UUID bio_message_id PK
+        UUID bio_conversation_id FK
+        UUID bio_researcher_id FK
+        VARCHAR bio_sender_role
+        TEXT bio_message_text
+        INTEGER bio_input_tokens
+        INTEGER bio_output_tokens
+        UUID bio_copilot_usage_id FK
+        TIMESTAMPTZ bio_created_at
+    }
+
+    bio_copilot_usage {
+        UUID bio_copilot_usage_id PK
+        UUID bio_researcher_id FK
+        TEXT bio_prompt_text
+        TEXT bio_response_text
+        VARCHAR bio_model_name
+        INTEGER bio_input_tokens
+        INTEGER bio_output_tokens
+        TIMESTAMPTZ bio_created_at
+    }
+
+    bio_copilot_citations {
+        UUID bio_copilot_citation_id PK
+        UUID bio_copilot_usage_id FK
+        UUID bio_sighting_id FK
+        SMALLINT bio_rank
+        NUMERIC bio_similarity
+    }

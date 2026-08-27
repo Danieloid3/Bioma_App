@@ -19,13 +19,17 @@ API y OpenAPI: `http://localhost:8001/docs`.
 - `POST /v1/auth/refresh` rota esa cookie; la reutilización de una cookie previa revoca toda su familia de sesión.
 - `POST /v1/auth/logout` revoca la familia y elimina la cookie.
 
+La rotación devuelve el actor completo (incluida su clave de avatar) y conserva la filiación de cada token hijo con el token original, sin persistir tokens opacos en claro.
+
 El seed de desarrollo usa la contraseña `Bioma2026!`. No cargar ese seed ni permitir `REFRESH_COOKIE_SECURE=false` en producción.
 
 ## Avistamientos y catálogo
 
 Con access token bearer, `GET /v1/species`, `GET /v1/sites`, `GET /v1/sightings` y `GET /v1/sightings/search?term=...` solo entregan filas autorizadas por RLS. `POST /v1/sightings`, `PATCH /v1/sightings/{id}` y `POST /v1/sightings/{id}/void` delegan las escrituras a funciones y procedimientos de PostgreSQL; editar o anular exige un motivo y conserva la revisión previa.
 
-`POST /v1/copilot/ask` recibe únicamente la pregunta del investigador; el servidor recupera el contexto autorizado, genera la respuesta y devuelve sus fuentes. Si RLS no recupera fuentes autorizadas, responde una negativa transparente sin llamar al LLM. `GET /v1/copilot/usage` devuelve el resumen de uso visible para el actor autenticado.
+`POST /v1/copilot/ask` recibe únicamente la pregunta del investigador; el servidor recupera el contexto autorizado, genera la respuesta y devuelve sus fuentes. Si RLS no recupera fuentes autorizadas, responde una negativa transparente sin llamar al LLM. Cada turno crea una sola auditoría y enlaza el mensaje de asistente a ella. `GET /v1/copilot/usage` devuelve el resumen de uso visible para el actor autenticado.
+
+En `/v1/chat`, enviar y volver a leer el mensaje ocurre en la misma transacción. El historial y las respuestas de `@copilot` usan citas canónicas y solo persisten fuentes visibles para todos los miembros activos del canal.
 
 Redis implementa rate limiting distribuido: una clave con TTL por IP+correo para login y otra por investigador para el copiloto, con `INCR` atómico mediante Lua, respuesta `429` y `Retry-After`. El correo se normaliza y se convierte en un identificador HMAC para no almacenarlo en claro.
 

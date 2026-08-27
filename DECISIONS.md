@@ -44,13 +44,47 @@ La ficha incluye coordenadas exactas, por lo que no se deriva del listado ni se 
 
 ## Enriquecimiento del catálogo científico e inyección en RAG
 
-Se amplió `bio_species` y `bio_sites` con descripción científica, hábitat, dieta, bioma y estado de conservación (Migración `027`). Este catálogo se inyecta formalmente en el contexto del copiloto a través de `bio_fn_get_knowledge_catalog()`, permitiendo que el LLM responda con rigor biológico sobre las especies y áreas protegidas de la Fundación Yarumo mientras sigue citando avistamientos reales `[obs-XXXX]` recuperados bajo RLS.
+El baseline amplía `bio_species` y `bio_sites` con descripción científica, hábitat, dieta, bioma y estado de conservación. Este catálogo se inyecta formalmente en el contexto del copiloto a través de `bio_fn_get_knowledge_catalog()`, permitiendo que el LLM responda con rigor biológico sobre las especies y áreas protegidas de la Fundación Yarumo mientras sigue citando avistamientos reales `[obs-XXXX]` recuperados bajo RLS.
 
 ## Fichas científicas modales con degradado panorámico
 
 El frontend presenta las especies y sitios mediante modales interactivos con imágenes de 21rem y degradado orgánico difuminado hacia el fondo marfil (`var(--surface)`). Los títulos y categorías UICN reposan sobre el degradado, permitiendo una lectura fluida de la ficha taxonómica y ecológica sin romper el diseño sobrio y científico de Bioma.
 
+## Mensajería interna: módulo PostgreSQL, no microservicio MongoDB
+
+La mensajería interna vive junto a Bioma en PostgreSQL y FastAPI. Las membresías de canal, historial, búsqueda semántica y recuperación RAG se gobiernan con el mismo actor transaccional y RLS que protege los avistamientos. Redis queda reservado para señales efímeras de tiempo real; no es fuente de verdad. Esta decisión evita duplicar identidad/permisos en una base no relacional y permite probar que un no miembro no puede listar, buscar ni recuperar mensajes de un canal privado.
+
 ## Pipeline CI/CD en GitHub Actions
 
 Se automatizó la verificación continua en `.github/workflows/ci.yml`. Toda integración comprueba la compilación TypeScript de frontend, la validez del Compose y ejecuta las pruebas de aserción de seguridad PostgreSQL RLS/RAG con contenedores reales, garantizando que ninguna regresión de seguridad o de tipos llegue a producción.
 
+## Eliminación lógica tombstone y versionado inmutable en chat
+
+Para cumplir la regla innegociable de no usar `DELETE` físico y mantener auditoría forense, los mensajes de chat eliminados se marcan con `bio_is_deleted = true` y `bio_deleted_at = clock_timestamp()`. El trigger inmutable `trg_bio_chat_messages_10_archive` archiva el snapshot del mensaje en `bio_chat_message_versions` antes de la mutación. En consultas (`bio_fn_chat_history`), los mensajes eliminados devuelven `message_text = 'Este mensaje fue eliminado'` y `is_deleted = true`, presentándose en UI con icono de prohibido y deshabilitando edición, preservando la inmutabilidad histórica.
+
+## Procedimientos almacenados para gestión de investigadores
+
+La administración y consulta de investigadores activos se estandarizó mediante procedimientos almacenados en PostgreSQL. `bio_sp_get_active_researchers` devuelve un cursor tipado (`REFCURSOR`) con el directorio de usuarios activos. `bio_sp_manage_researcher` encapsula la actualización y baja lógica (`bio_is_active = false`), validando que el actor ejecutor posea acreditación de nivel 3 y rechazando transaccionalmente cualquier intento de auto-desactivación o modificación no autorizada.
+
+## Visibilidad compartida en copiloto RAG dentro de canales colaborativos
+
+Cuando el copiloto es consultado en un canal compartido entre dos o más investigadores, la recuperación de contexto RAG no evalúa únicamente al emisor ni al receptor de forma aislada: ejecuta `bio_fn_chat_shared_sightings()` para calcular la intersección estricta de permisos entre todos los miembros activos del canal. El LLM solo recibe avistamientos que todos los participantes tienen derecho de ver, impidiendo cualquier fuga de información confidencial en espacios de trabajo colaborativos.
+
+## Identidad visual y branding desacoplado
+
+El isotipo del ave y la tipografía de la marca se desacoplaron en assets vectoriales independientes (`bioma-pajaro.svg` y `bioma-letras.svg`). Esto permite que el favicon del navegador exponga únicamente el isotipo cuadrado de alta definición, mientras que la barra lateral y la pantalla de inicio de sesión componen el logotipo completo con control milimétrico sobre escala, grosor tipográfico, espaciado y contraste contra fondos claros y oscuros.
+
+### [2026-08-27] Enriquecimiento del corpus de prueba (Semilla)
+
+**Contexto:** Para probar rigurosamente las políticas RLS y evaluar la respuesta del copiloto RAG bajo condiciones realistas de autorización, el corpus de prueba resultaba insuficiente con solo 3 investigadores. Además, el frontend necesitaba representar una mayor variedad de cargos, acreditaciones y avatares para validar las vistas de directorio y perfiles.
+**Decisión:** `003_seed_data.sql` concentra los 11 investigadores representativos, con niveles de acreditación y roles variados, y sus avistamientos de demostración.
+**Consecuencias:**
+- Las pruebas automatizadas ls_assertions.sql y ag_security_assertions.sql contarán con más escenarios, robusteciendo la verificación.
+- La interfaz visual de directorio presentará datos mucho más cercanos a producción, permitiendo evaluar problemas de renderizado o maquetación con los diferentes avatares (oso de anteojos, cndor, jaguar, etc.).
+- Aumenta el volumen de embeddings que deberá procesar el worker local (o mock) tras levantar el ambiente inicial.
+
+## Reparación hacia adelante del baseline del copiloto
+
+Las migraciones ya registradas no se reescriben. `005_repair_copilot_persistence.sql` corrige las funciones consolidadas mediante una migración nueva: `bio_fn_log_copilot_usage` vuelve a ser el único punto autorizado de auditoría, revalida cada cita con acreditación o autoría, y `bio_fn_record_copilot_turn` enlaza el mensaje de asistente a esa misma fila. También se revoca DML directo sobre hilos, se protege `bio_copilot_citations` con RLS y se restaura el contrato de `bio_fn_copilot_usage_summary()` consumido por el frontend.
+
+La misma política de reparación hacia adelante se aplica al chat y la sesión. `006_repair_chat_history_and_citations.sql` adapta `bio_fn_chat_history` y `bio_fn_record_chat_copilot_message` a las columnas canónicas de fuentes, impidiendo que una cita sobrepase la visibilidad compartida del canal. `007_repair_refresh_token_rotation.sql` restaura todos los atributos del actor y corrige la filiación de la cadena rotativa sin almacenar el token opaco en claro. `008_fix_chat_message_counter.sql` reemplaza el `JOIN` de membresías por `EXISTS`, evitando contar cada mensaje una vez por integrante. `009_chat_unread_receipts.sql` separa el total de mensajes del contador de no leídos y marca los recibos al abrir un canal.

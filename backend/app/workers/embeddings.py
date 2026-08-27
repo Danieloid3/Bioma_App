@@ -39,6 +39,26 @@ class EmbeddingWorker:
             logger.exception("embedding_failed sighting_id=%s attempts=%s", sighting_id, attempts)
         return True
 
+    async def run_chat_once(self) -> bool:
+        async with self._database.connection() as connection, connection.transaction():
+            row = await connection.fetchrow("SELECT * FROM bio_fn_claim_chat_embedding_job()")
+        if row is None:
+            return False
+        try:
+            embedding = await self._embeddings.embed_document(row["message_text"])
+            async with self._database.connection() as connection:
+                await connection.execute(
+                    "SELECT bio_fn_store_chat_message_embedding($1, $2::vector, $3)",
+                    row["message_id"], str(list(embedding)), self._embeddings.embedding_model_name,
+                )
+        except Exception as error:
+            async with self._database.connection() as connection:
+                await connection.execute(
+                    "SELECT bio_fn_mark_chat_embedding_failed($1, $2)", row["message_id"], type(error).__name__
+                )
+            logger.exception("chat_embedding_failed message_id=%s", row["message_id"])
+        return True
+
     async def run_forever(self) -> None:
         base_poll = max(10, self._settings.embedding_worker_poll_seconds)
         idle_seconds = base_poll
@@ -46,6 +66,8 @@ class EmbeddingWorker:
         while True:
             try:
                 processed = await self.run_once()
+                if not processed:
+                    processed = await self.run_chat_once()
                 if processed:
                     idle_seconds = base_poll
                     await asyncio.sleep(0.5)

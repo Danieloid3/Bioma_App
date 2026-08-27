@@ -1,4 +1,4 @@
-﻿import { Fragment, FormEvent, KeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, FormEvent, KeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, Clock3, Leaf, MessageSquare, Plus, Send, Settings, ShieldCheck, Sparkles, Trash2, X, Zap } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -515,7 +515,7 @@ function formatInlineContent(
   sourceByReference: Map<string, CopilotAnswer["sources"][number]>,
   onOpenSighting: (sightingId: string) => void
 ): ReactNode[] {
-  const tokens = text.split(/(\[?obs-[A-Za-z0-9-]+\]?|\*\*[^*]+\*\*|\*[^*\n]+\*|_[^_\n]+_|`[^`]+`)/g);
+  const tokens = text.split(/(\[?obs-[A-Za-z0-9-]+\]?|\*\*[^*]+\*\*|\*[^*\n]+\*|_[^_\n]+_|`[^`]+`)/gi);
 
   return tokens.map((token, index) => {
     if (!token) return null;
@@ -527,17 +527,20 @@ function formatInlineContent(
       if (source) {
         return (
           <button
-            className={styles.inlineReference}
+            className={styles.inlineCitationPill}
             type="button"
             key={index}
             onClick={() => onOpenSighting(source.sighting_id)}
             title={`${source.species_common_name} (${source.observation_reference})`}
           >
-            {token.startsWith("[") ? token : `[${token}]`}
+            <span className={styles.citationIcon}><Leaf /></span>
+            <span className={styles.citationText}>
+              {source.species_common_name} · {source.observation_reference.toUpperCase()}
+            </span>
           </button>
         );
       }
-      return <span key={index} className={styles.inlineReferenceUnlinked}>{token}</span>;
+      return <span key={index} className={styles.inlineReferenceUnlinked}>{token.startsWith("[") ? token : `[${token}]`}</span>;
     }
 
     // Negrita **texto**
