@@ -1,4 +1,5 @@
-from contextlib import asynccontextmanager
+import asyncio
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,6 +11,7 @@ from app.infrastructure.rate_limit import RedisRateLimiter
 from app.presentation.api.errors import install_exception_handlers
 from app.presentation.api.middleware import correlation_id_middleware
 from app.presentation.api.routers import auth, catalog, copilot, dashboard, health, sightings
+from app.workers.embeddings import EmbeddingWorker
 
 
 @asynccontextmanager
@@ -24,11 +26,19 @@ async def lifespan(app: FastAPI):
     app.state.rate_limiter = rate_limiter
     app.state.database = database
 
+    # Background embedding worker runs inside the API container to save Railway resources
+    worker = EmbeddingWorker(database)
+    worker_task = asyncio.create_task(worker.run_forever())
+
     try:
         yield
     finally:
+        worker_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await worker_task
         await database.close()
         await rate_limiter.close()
+
 
 
 app = FastAPI(

@@ -40,11 +40,24 @@ class EmbeddingWorker:
         return True
 
     async def run_forever(self) -> None:
-        poll_seconds = self._settings.embedding_worker_poll_seconds
+        base_poll = max(10, self._settings.embedding_worker_poll_seconds)
+        idle_seconds = base_poll
+        max_idle = 60
         while True:
-            processed = await self.run_once()
-            if not processed:
-                await asyncio.sleep(poll_seconds)
+            try:
+                processed = await self.run_once()
+                if processed:
+                    idle_seconds = base_poll
+                    await asyncio.sleep(0.5)
+                else:
+                    await asyncio.sleep(idle_seconds)
+                    idle_seconds = min(idle_seconds * 1.5, max_idle)
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                logger.exception("Unexpected error in embedding worker loop, sleeping...")
+                await asyncio.sleep(max_idle)
+
 
 
 async def main() -> None:
