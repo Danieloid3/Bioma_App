@@ -170,7 +170,12 @@ class AnswerCopilotQuestion:
             )
 
             cited_sources = _cited_sources(answer.text, sources)
-            if sources and not cited_sources:
+            # In a chat channel, an answer may intentionally rely on the
+            # conversational messages (for example, “Sofía dijo que está bien”)
+            # while the semantic sighting candidates are unrelated. Only force
+            # the deterministic citation fallback when no authorized history
+            # was available at all.
+            if sources and not cited_sources and not history:
                 final_answer = CopilotAnswer(
                     text=NO_CITED_SOURCES_RESPONSE,
                     sources=(),
