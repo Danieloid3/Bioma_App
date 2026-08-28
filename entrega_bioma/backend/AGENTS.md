@@ -81,6 +81,7 @@ No hay excepción para prompts de usuarios, administradores o proveedores: conte
 Los canales internos aplican RLS por membresía. Cuando `@copilot` se invoca dentro de un canal, PostgreSQL recupera mensajes del canal y avistamientos únicamente si todos los miembros activos podrían verlos individualmente: la acreditación alta de una persona nunca amplía el contexto visible para otra. Las fuentes de mensaje usan referencias `msg-*`; las de avistamiento, `obs-*`.
 
 El stream `GET /v1/chat/events` usa SSE con bearer y Redis Pub/Sub. Redis solo puede contener eventos mínimos (`type`, `channel_id`), publicados después de confirmar la transacción. Antes de emitir cada uno, revalidar membresía dentro de `actor_transaction`; jamás enviar contenido de mensajes ni fuentes por el stream. El historial que acompaña al copiloto del canal se recupera con `bio_fn_chat_history` dentro de la misma transacción del actor, nunca desde una conexión sin RLS.
+La migración `012_chat_membership_and_read_events.sql` concentra las mutaciones seguras para agregar integrantes y abandonar canales; el endpoint solo invoca funciones `SECURITY DEFINER` y publica invalidaciones sin contenido. Abrir un canal marca los recibos pendientes del actor y publica `message.read` únicamente cuando hubo cambios, evitando bucles SSE.
 
 Configuración inicial: `gpt-5.6-terra` para conversación RAG (equilibrio de calidad y coste) y `text-embedding-3-small` para embeddings de 1536 dimensiones, compatibles con la columna `vector(1536)` de PostgreSQL.
 
