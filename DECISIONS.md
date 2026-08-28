@@ -96,3 +96,13 @@ La misma política de reparación hacia adelante se aplica al chat y la sesión.
 ## Prompts inmutables y administrables
 
 Los prompts de campo, chat y saludo viven en `bio_system_prompt_versions`. Crear una versión calcula su SHA-256, conserva el texto histórico y activa esa versión; restaurar una anterior solo cambia cuál es la activa. La autorización se comprueba en PostgreSQL contra `bio_is_admin`, no en la interfaz. Cada uso audita el identificador de versión activo.
+
+## Fallback determinista de catálogo (`bioma-catalog-policy`)
+
+Cuando el LLM responde sobre una especie o sitio del catálogo oficial pero omite la cita `[species-UUID]` o `[site-UUID]`, el caso de uso descarta la respuesta del modelo y la sustituye por un texto construido íntegramente desde la fila de `bio_species` o `bio_sites` recuperada por `bio_fn_retrieve_catalog_context()`. El `model_name` devuelto es `"bioma-catalog-policy"` para que la auditoría en `bio_copilot_usage` identifique la fuente. Esta política:
+
+- No aplica cuando hay historial conversacional activo en el hilo: el contexto previo puede legitimar respuestas sin cita directa al catálogo.
+- No reemplaza la regla de acreditación RLS: el catálogo de especies y sitios es público, pero los avistamientos de campo siguen siendo privados por acceso.
+- Es testeable sin red ni LLM real: `test_catalog_answer_falls_back_to_verifiable_database_text_when_model_omits_citation` en `tests/test_copilot_negative_responses.py`.
+- Verificado en producción (2026-08-28): `model_name = "bioma-catalog-policy"`, `source_type = "species"`, cita `[species-UUID]` presente en el texto de respuesta.
+

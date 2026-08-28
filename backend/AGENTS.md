@@ -67,6 +67,8 @@ Los endpoints `/v1/copilot/conversations` y `/v1/copilot/conversations/{id}/mess
 
 El endpoint `POST /v1/copilot/ask` devuelve únicamente fuentes recuperadas por RLS que estén citadas explícitamente como `[obs-ref]` en su respuesta. El caso de uso descarta referencias inventadas; si no hay una cita válida, devuelve una negativa verificable y audita cero citas. No debe aceptar contexto enviado por el cliente. `GET /v1/copilot/usage` expone únicamente el resumen del actor autenticado.
 
+Cuando el modelo no cita ninguna fuente pero `bio_fn_retrieve_catalog_context()` devuelve ítems de catálogo relevantes (sin historial conversacional activo en el hilo), el caso de uso construye una respuesta determinista desde la BD con `model_name = "bioma-catalog-policy"` y fuerza la cita `[species-UUID]` o `[site-UUID]` en el texto. Esto garantiza que toda respuesta factual sobre el catálogo lleve al menos una fuente auditable, aunque el LLM la haya omitido. La política no aplica cuando hay historial previo en el hilo (el contexto conversacional puede legitimar respuestas sin cita directa). Prueba: `test_catalog_answer_falls_back_to_verifiable_database_text_when_model_omits_citation`.
+
 
 `GET /v1/dashboard` usa funciones SQL invocadas bajo el actor para métricas, clasificación y actividad. No calcular agregados desde una conexión sin actor. `bio_sighting_revisions` tiene RLS propio porque conserva contenido sensible histórico; ningún endpoint debe consultar revisiones sin la transacción de actor.
 
