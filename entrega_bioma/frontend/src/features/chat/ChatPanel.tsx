@@ -62,6 +62,7 @@ type Message = {
   is_deleted: boolean;
   created_at: string;
   read_count: number;
+  delivered_count: number;
   status?: "pending" | "sent" | "failed";
   citations: Citation[];
 };
@@ -610,6 +611,7 @@ export function ChatPanel({
       is_deleted: false,
       created_at: new Date().toISOString(),
       read_count: 1,
+      delivered_count: 1,
       status: "pending",
       citations: [],
     };
@@ -1041,10 +1043,10 @@ export function ChatPanel({
                         {message.status === "pending" && (
                           <Clock aria-hidden="true" />
                         )}
-                        {message.status === "sent" && message.read_count > 1 && (
-                          <CheckCheck className={styles.readReceipt} aria-hidden="true" />
+                        {message.status === "sent" && message.delivered_count > 1 && (
+                          <CheckCheck className={message.read_count >= message.delivered_count ? styles.readReceipt : undefined} aria-hidden="true" />
                         )}
-                        {message.status === "sent" && message.read_count <= 1 && (
+                        {message.status === "sent" && message.delivered_count <= 1 && (
                           <Check aria-hidden="true" />
                         )}
                         {message.status === "failed" && (

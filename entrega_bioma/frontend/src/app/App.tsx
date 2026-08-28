@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Bird, Bot, FileBarChart, House, Languages, Leaf, MapPin, Menu, MessageCircle, Search, Settings, UsersRound, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -14,8 +14,27 @@ import { ReportsPanel } from "../features/reports/ReportsPanel";
 import { SightingDetailDialog, SightingsPanel } from "../features/sightings/SightingsPanel";
 import { ApiClient } from "../shared/api/client";
 import { AnimalAvatar } from "../shared/components/AnimalAvatar";
+import { BiomaLoader } from "../shared/components/BiomaLoader";
 
 type View = "dashboard" | "sightings" | "species" | "sites" | "researchers" | "search" | "chat" | "copilot" | "reports" | "profile" | "admin";
+
+// A refresh token is rotated every time it is consumed. Keep one in-flight
+// restore promise shared by all App mounts in this browser context so React
+// remounts (and any duplicated root during development) cannot race and make
+// the second request look like token reuse.
+let sessionRestorePromise: Promise<AuthenticationResponse> | null = null;
+
+function restoreSession(): Promise<AuthenticationResponse> {
+  if (!sessionRestorePromise) {
+    sessionRestorePromise = new ApiClient(() => null)
+      .post<AuthenticationResponse>("/v1/auth/refresh")
+      .catch((error: unknown) => {
+        sessionRestorePromise = null;
+        throw error;
+      });
+  }
+  return sessionRestorePromise;
+}
 
 export function App() {
   const { i18n, t } = useTranslation();
@@ -28,20 +47,13 @@ export function App() {
   });
   const [menuOpen, setMenuOpen] = useState(false);
   const [selectedSightingId, setSelectedSightingId] = useState<string | null>(null);
-  const sessionRestoreStarted = useRef(false);
   const api = useMemo(() => new ApiClient(() => token), [token]);
   const nextLanguage = i18n.language.startsWith("es") ? "en" : "es";
 
   useEffect(() => {
-    // React Strict Mode deliberately re-runs effects in development. A refresh
-    // token is rotated on use, so issuing two concurrent restores would make
-    // the second request look like token reuse and revoke the session family.
-    if (sessionRestoreStarted.current) return;
-    sessionRestoreStarted.current = true;
-
-    async function restoreSession() {
+    async function loadSession() {
       try {
-        const response = await new ApiClient(() => null).post<AuthenticationResponse>("/v1/auth/refresh");
+        const response = await restoreSession();
         setToken(response.access_token);
         setResearcher(response.researcher);
       } catch {
@@ -51,12 +63,12 @@ export function App() {
         setCheckingSession(false);
       }
     }
-    void restoreSession();
+    void loadSession();
   }, []);
   async function saveSession(response: AuthenticationResponse) { setToken(response.access_token); setResearcher(response.researcher); }
   async function login(email: string, password: string) { await saveSession(await new ApiClient(() => null).post<AuthenticationResponse>("/v1/auth/login", { email, password })); }
   async function logout() { try { await api.post<void>("/v1/auth/logout"); } finally { setToken(null); setResearcher(null); setView("dashboard"); sessionStorage.removeItem("bioma_active_view"); } }
-  if (checkingSession) return <main className="startup"><span className="leaf-loader" />{t("common.loading")}</main>;
+  if (checkingSession) return <main className="startup"><BiomaLoader label={t("common.loading")} /></main>;
   if (!researcher) return <LoginPage onLogin={login} />;
   const nav: { view: View; icon: typeof House; label: string }[] = [
     { view: "dashboard", icon: House, label: t("nav.dashboard") }, { view: "sightings", icon: Bird, label: t("nav.sightings") },
