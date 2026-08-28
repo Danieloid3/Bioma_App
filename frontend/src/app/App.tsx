@@ -13,28 +13,11 @@ import { ProfilePanel } from "../features/profile/ProfilePanel";
 import { ReportsPanel } from "../features/reports/ReportsPanel";
 import { SightingDetailDialog, SightingsPanel } from "../features/sightings/SightingsPanel";
 import { ApiClient } from "../shared/api/client";
+import { restoreSession } from "../shared/auth/refreshSession";
 import { AnimalAvatar } from "../shared/components/AnimalAvatar";
 import { BiomaLoader } from "../shared/components/BiomaLoader";
 
 type View = "dashboard" | "sightings" | "species" | "sites" | "researchers" | "search" | "chat" | "copilot" | "reports" | "profile" | "admin";
-
-// A refresh token is rotated every time it is consumed. Keep one in-flight
-// restore promise shared by all App mounts in this browser context so React
-// remounts (and any duplicated root during development) cannot race and make
-// the second request look like token reuse.
-let sessionRestorePromise: Promise<AuthenticationResponse> | null = null;
-
-function restoreSession(): Promise<AuthenticationResponse> {
-  if (!sessionRestorePromise) {
-    sessionRestorePromise = new ApiClient(() => null)
-      .post<AuthenticationResponse>("/v1/auth/refresh")
-      .catch((error: unknown) => {
-        sessionRestorePromise = null;
-        throw error;
-      });
-  }
-  return sessionRestorePromise;
-}
 
 export function App() {
   const { i18n, t } = useTranslation();

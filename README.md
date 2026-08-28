@@ -54,3 +54,5 @@ La plataforma completa está desplegada en **Railway** como un proyecto multi-se
 - **PostgreSQL**: PostgreSQL 16 con `pgvector`, RLS y migraciones automáticas.
 - **Redis**: Rate limiting distribuido y memoria de conversación para el Copiloto.
 - **Embedding Worker**: Procesamiento en segundo plano de notas y vectores de avistamientos.
+
+Como el frontend y la API de Railway se publican en orígenes distintos, el refresh token de producción usa una cookie `HttpOnly; Secure; SameSite=None`. El token de acceso no se persiste: al recargar se recupera mediante esa cookie y el navegador serializa la rotación entre pestañas con Web Locks para evitar reutilizar un refresh token.

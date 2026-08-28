@@ -19,6 +19,8 @@ API y OpenAPI: `http://localhost:8001/docs`.
 - `POST /v1/auth/refresh` rota esa cookie; la reutilización de una cookie previa revoca toda su familia de sesión.
 - `POST /v1/auth/logout` revoca la familia y elimina la cookie.
 
+Cuando la web y el API se sirven desde orígenes distintos en producción, configurar `REFRESH_COOKIE_SAMESITE=none` junto con `REFRESH_COOKIE_SECURE=true`; en desarrollo local se conserva `lax` y `secure=false`. La cookie sigue siendo HttpOnly y el access token no se persiste en el navegador.
+
 La rotación devuelve el actor completo (incluida su clave de avatar) y conserva la filiación de cada token hijo con el token original, sin persistir tokens opacos en claro.
 
 El seed de desarrollo usa la contraseña `Bioma2026!`. No cargar ese seed ni permitir `REFRESH_COOKIE_SECURE=false` en producción.
