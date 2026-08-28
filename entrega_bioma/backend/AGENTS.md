@@ -82,6 +82,7 @@ Los canales internos aplican RLS por membresía. Cuando `@copilot` se invoca den
 
 El stream `GET /v1/chat/events` usa SSE con bearer y Redis Pub/Sub. Redis solo puede contener eventos mínimos (`type`, `channel_id`), publicados después de confirmar la transacción. Antes de emitir cada uno, revalidar membresía dentro de `actor_transaction`; jamás enviar contenido de mensajes ni fuentes por el stream. El historial que acompaña al copiloto del canal se recupera con `bio_fn_chat_history` dentro de la misma transacción del actor, nunca desde una conexión sin RLS.
 La migración `012_chat_membership_and_read_events.sql` concentra las mutaciones seguras para agregar integrantes y abandonar canales; el endpoint solo invoca funciones `SECURITY DEFINER` y publica invalidaciones sin contenido. Abrir un canal marca los recibos pendientes del actor y publica `message.read` únicamente cuando hubo cambios, evitando bucles SSE.
+La migración `013_chat_delivery_receipts.sql` expone por mensaje los conteos separados de recibos entregados y leídos; el cliente usa esos conteos para representar un check, dos checks o dos checks verdes sin consultar tablas directamente.
 
 Configuración inicial: `gpt-5.6-terra` para conversación RAG (equilibrio de calidad y coste) y `text-embedding-3-small` para embeddings de 1536 dimensiones, compatibles con la columna `vector(1536)` de PostgreSQL.
 
