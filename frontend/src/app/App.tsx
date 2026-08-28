@@ -174,7 +174,7 @@ function AppView({ view, api, researcher, onLogout, onNavigate, onOpenSighting, 
   if (view === "sites") return <SitesPanel api={api} />;
   if (view === "researchers") return <ResearchersPanel api={api} />;
   if (view === "chat") return <ChatPanel api={api} researcher={researcher} onOpenSighting={onOpenSighting} onOpenSpecies={onOpenSpecies} onOpenSite={onOpenSite} />;
-  if (view === "admin") return <PromptAdminPanel api={api} />;
+  if (view === "admin") return <div className="single-column"><PromptAdminPanel api={api} /></div>;
 
   if (view === "copilot") return <div className="single-column"><CopilotPanel api={api} researcherId={researcher.researcher_id} onOpenSighting={onOpenSighting} onOpenSpecies={onOpenSpecies} onOpenSite={onOpenSite} /></div>;
   if (view === "profile") return <div className="single-column"><ProfilePanel api={api} researcher={researcher} onLogout={onLogout} onNavigate={onNavigate} /></div>;

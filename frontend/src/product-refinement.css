@@ -74,6 +74,11 @@
     max-width: min(100%, 52rem);
   }
 
+  .view-admin .topbar,
+  .view-admin .view-frame,
+  .view-admin .single-column {
+    max-width: min(100%, 53rem);
+  }
 
   .view-reports .topbar,
   .view-reports .view-frame {
@@ -89,6 +94,54 @@
     flex-direction: column;
   }
 
+  .view-admin .admin-prompts {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+  }
+
+  .view-admin .admin-prompts > header {
+    flex: none;
+  }
+
+  .view-admin .admin-prompt-editor {
+    flex: none;
+    margin-top: .85rem;
+  }
+
+  .view-admin .admin-prompt-editor textarea {
+    min-height: 4.5rem;
+    height: 5.5rem;
+    max-height: 8rem;
+    resize: vertical;
+  }
+
+  .view-admin .admin-prompt-history {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin-top: 1rem;
+    padding-top: 0;
+  }
+
+  .view-admin .admin-prompt-history h3 {
+    flex: none;
+    margin: 0 0 .35rem;
+  }
+
+  .view-admin .admin-prompt-history-list {
+    flex: 1;
+    min-height: 0;
+    padding-bottom: .5rem;
+  }
+
   .view-frame > .sightings-card:not(.compact) {
     height: 100%;
     max-height: 100%;
@@ -101,7 +154,8 @@
   .catalog-page .species-grid,
   .catalog-page .site-grid,
   .catalog-page .researcher-grid,
-  .report-scroll {
+  .report-scroll,
+  .admin-prompt-history-list {
     min-height: 0;
     overflow-y: auto;
     scrollbar-width: none;
@@ -113,7 +167,8 @@
   .catalog-page .species-grid::-webkit-scrollbar,
   .catalog-page .site-grid::-webkit-scrollbar,
   .catalog-page .researcher-grid::-webkit-scrollbar,
-  .report-scroll::-webkit-scrollbar { display: none; }
+  .report-scroll::-webkit-scrollbar,
+  .admin-prompt-history-list::-webkit-scrollbar { display: none; }
 
   .view-frame > .sightings-card:not(.compact) .sighting-list { flex: 1; }
 

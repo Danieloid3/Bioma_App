@@ -25,5 +25,63 @@ export function PromptAdminPanel({ api }: { api: ApiClient }) {
 
   if (prompts.isError) return <section className="admin-prompts"><ShieldAlert /><h2>{t("adminPrompts.restrictedTitle")}</h2><p>{t("adminPrompts.restrictedDescription")}</p></section>;
 
-  return <section className="admin-prompts"><header><div><p className="eyebrow">{t("nav.admin")}</p><h2>{t("adminPrompts.title")}</h2><p>{t("adminPrompts.description")}</p></div><ShieldAlert /></header><form onSubmit={submit} className="admin-prompt-editor"><label>{t("adminPrompts.scope")}<span className="admin-select"><select value={scope} onChange={(event) => setScope(event.target.value as PromptVersion["scope"])}><option value="field">{t("adminPrompts.field")}</option><option value="chat">{t("adminPrompts.chat")}</option><option value="greeting">{t("adminPrompts.greeting")}</option></select><ChevronDown aria-hidden="true" /></span></label><textarea value={text} onChange={(event) => setText(event.target.value)} placeholder={active?.prompt_text ?? t("adminPrompts.placeholder")} minLength={40} maxLength={20000} /><button className="button primary" type="submit" disabled={create.isPending || text.trim().length < 40}><Save />{t("adminPrompts.save")}</button></form><div className="admin-prompt-history"><h3><History /> {t("adminPrompts.history")}</h3>{prompts.data?.filter((item) => item.scope === scope).map((item) => <article key={item.prompt_id} className={item.is_active ? "active" : ""}><div><strong>{friendlyVersionName(item, scopeLabel)}</strong><span>{item.is_active ? t("adminPrompts.active") : t("adminPrompts.createdBy", { name: item.created_by })}</span><small>{t("adminPrompts.auditCode", { code: item.content_sha256.slice(0, 12) })}</small></div>{item.is_active ? <CheckCircle2 aria-label={t("adminPrompts.active")} /> : <button type="button" className="button text" onClick={() => activate.mutate(item.prompt_id)}>{t("adminPrompts.restore")}</button>}</article>)}</div></section>;
+  return (
+    <section className="admin-prompts">
+      <header>
+        <div>
+          <p className="eyebrow">{t("nav.admin")}</p>
+          <h2>{t("adminPrompts.title")}</h2>
+          <p>{t("adminPrompts.description")}</p>
+        </div>
+        <ShieldAlert />
+      </header>
+      <form onSubmit={submit} className="admin-prompt-editor">
+        <label>
+          {t("adminPrompts.scope")}
+          <span className="admin-select">
+            <select value={scope} onChange={(event) => setScope(event.target.value as PromptVersion["scope"])}>
+              <option value="field">{t("adminPrompts.field")}</option>
+              <option value="chat">{t("adminPrompts.chat")}</option>
+              <option value="greeting">{t("adminPrompts.greeting")}</option>
+            </select>
+            <ChevronDown aria-hidden="true" />
+          </span>
+        </label>
+        <textarea
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          placeholder={active?.prompt_text ?? t("adminPrompts.placeholder")}
+          minLength={40}
+          maxLength={20000}
+        />
+        <button className="button primary" type="submit" disabled={create.isPending || text.trim().length < 40}>
+          <Save />
+          {t("adminPrompts.save")}
+        </button>
+      </form>
+      <div className="admin-prompt-history">
+        <h3>
+          <History /> {t("adminPrompts.history")}
+        </h3>
+        <div className="admin-prompt-history-list">
+          {prompts.data?.filter((item) => item.scope === scope).map((item) => (
+            <article key={item.prompt_id} className={item.is_active ? "active" : ""}>
+              <div>
+                <strong>{friendlyVersionName(item, scopeLabel)}</strong>
+                <span>{item.is_active ? t("adminPrompts.active") : t("adminPrompts.createdBy", { name: item.created_by })}</span>
+                <small>{t("adminPrompts.auditCode", { code: item.content_sha256.slice(0, 12) })}</small>
+              </div>
+              {item.is_active ? (
+                <CheckCircle2 aria-label={t("adminPrompts.active")} />
+              ) : (
+                <button type="button" className="button text" onClick={() => activate.mutate(item.prompt_id)}>
+                  {t("adminPrompts.restore")}
+                </button>
+              )}
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 }
