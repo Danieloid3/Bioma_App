@@ -139,6 +139,7 @@ class ChatMessageItem:
     is_edited: bool
     created_at: datetime
     is_deleted: bool = False
+    delivered_count: int = 0
     read_count: int = 0
     citations: tuple[dict[str, str], ...] = ()
 

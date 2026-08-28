@@ -14,6 +14,7 @@ import { ReportsPanel } from "../features/reports/ReportsPanel";
 import { SightingDetailDialog, SightingsPanel } from "../features/sightings/SightingsPanel";
 import { ApiClient } from "../shared/api/client";
 import { AnimalAvatar } from "../shared/components/AnimalAvatar";
+import { BiomaLoader } from "../shared/components/BiomaLoader";
 
 type View = "dashboard" | "sightings" | "species" | "sites" | "researchers" | "search" | "chat" | "copilot" | "reports" | "profile" | "admin";
 
@@ -67,7 +68,7 @@ export function App() {
   async function saveSession(response: AuthenticationResponse) { setToken(response.access_token); setResearcher(response.researcher); }
   async function login(email: string, password: string) { await saveSession(await new ApiClient(() => null).post<AuthenticationResponse>("/v1/auth/login", { email, password })); }
   async function logout() { try { await api.post<void>("/v1/auth/logout"); } finally { setToken(null); setResearcher(null); setView("dashboard"); sessionStorage.removeItem("bioma_active_view"); } }
-  if (checkingSession) return <main className="startup"><span className="leaf-loader" />{t("common.loading")}</main>;
+  if (checkingSession) return <main className="startup"><BiomaLoader label={t("common.loading")} /></main>;
   if (!researcher) return <LoginPage onLogin={login} />;
   const nav: { view: View; icon: typeof House; label: string }[] = [
     { view: "dashboard", icon: House, label: t("nav.dashboard") }, { view: "sightings", icon: Bird, label: t("nav.sightings") },

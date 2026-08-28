@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { BiomaLoader } from "../../shared/components/BiomaLoader";
 import { useTranslation } from "react-i18next";
 
 import type {
@@ -438,6 +439,7 @@ export function ResearchersPanel({ api }: { api: ApiClient }) {
 function LoadingGrid() {
   return (
     <div className="catalog-page">
+      <BiomaLoader />
       <div className="skeleton intro" />
       <div className="species-grid">
         {Array.from({ length: 6 }, (_, index) => (

@@ -74,6 +74,7 @@ class MessageResponse(BaseModel):
     is_edited: bool
     is_deleted: bool = False
     created_at: datetime
+    delivered_count: int
     read_count: int
     citations: list[dict[str, str]] = Field(default_factory=list)
 

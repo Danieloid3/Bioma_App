@@ -100,3 +100,5 @@ El access token permanece solo en memoria. Al recargar, la aplicación restaura 
 - Los textos visibles y etiquetas accesibles de los modales del chat usan claves `chat.*` de i18next en español e inglés; no añadir cadenas de interfaz directamente al componente.
 - La restauración inicial de sesión comparte una única promesa a nivel de módulo: como el refresh token rota al consumirse, nunca deben ejecutarse restauraciones concurrentes aunque `App` se remonte.
 - `ChatPanel` ordena contactos y grupos por la última actividad, conserva el foco del compositor, ofrece `@copilot` al escribir `@`, muestra checks de lectura y permite gestionar integrantes o abandonar grupos mediante endpoints protegidos.
+- Los checks de mensajes propios se basan en `delivered_count` y `read_count`: uno enviado, dos entregado y dos verdes leído; nunca se infiere ese estado con datos locales no autorizados.
+- Los estados de carga reutilizan `shared/components/BiomaLoader.tsx`, con el ave de Bioma y tres puntos animados.

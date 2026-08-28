@@ -449,7 +449,9 @@ class PostgresChatRepository:
                 message_id=row["message_id"], channel_id=row["channel_id"], author_id=row["author_id"],
                 author_name=row["author_name"], message_text=row["message_text"],
                 sender_role=row.get("sender_role", "user"), is_edited=row.get("is_edited", False),
-                is_deleted=row.get("is_deleted", False), created_at=row["created_at"], read_count=row.get("read_count", 0),
+                is_deleted=row.get("is_deleted", False), created_at=row["created_at"],
+                delivered_count=row.get("delivered_count", row.get("read_count", 0)),
+                read_count=row.get("read_count", 0),
                 citations=enrich_citations(row["citations"]),
             ) for row in rows
 
