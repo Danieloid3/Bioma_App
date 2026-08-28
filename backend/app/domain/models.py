@@ -59,6 +59,8 @@ class CopilotSource:
 class CatalogKnowledgeItem:
     catalog_type: str  # 'species' | 'site'
     common_name: str
+    catalog_id: UUID | None = None
+    source_reference: str | None = None
     scientific_name: str | None = None
     iucn_category: str | None = None
     ecosystem: str | None = None

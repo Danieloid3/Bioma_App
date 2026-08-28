@@ -72,9 +72,9 @@ type ChatRealtimeEvent = {
 function formatInlineContent(
   text: string,
   sourceByReference: Map<string, Citation>,
-  onOpenSighting?: (sightingId: string) => void
+  onOpenSource?: (source: Citation) => void
 ): ReactNode[] {
-  const tokens = text.split(/(@copilot\b|\[?obs-[A-Za-z0-9-]+\]?|\*\*[^*]+\*\*|\*[^*\n]+\*|_[^_\n]+_|`[^`]+`)/gi);
+  const tokens = text.split(/(@copilot\b|\[?(?:obs|species|site)-[A-Za-z0-9-]+\]?|\*\*[^*]+\*\*|\*[^*\n]+\*|_[^_\n]+_|`[^`]+`)/gi);
 
   return tokens.map((token, index) => {
     if (!token) return null;
@@ -90,16 +90,16 @@ function formatInlineContent(
     }
 
     // Cita autorizada [obs-XXXX]
-    if (/^\[?obs-[A-Za-z0-9-]+\]?$/i.test(token)) {
+    if (/^\[?(?:obs|species|site)-[A-Za-z0-9-]+\]?$/i.test(token)) {
       const reference = token.replaceAll("[", "").replaceAll("]", "").toLowerCase();
       const source = sourceByReference.get(reference);
-      if (source && source.id && onOpenSighting) {
+      if (source && source.id && onOpenSource) {
         return (
           <button
             className={styles.inlineCitationPill}
             type="button"
             key={index}
-            onClick={() => onOpenSighting(source.id!)}
+            onClick={() => onOpenSource(source)}
             title={`Abrir registro ${source.reference}`}
           >
             <span className={styles.citationIcon}><Leaf /></span>
@@ -121,7 +121,7 @@ function formatInlineContent(
       const inner = token.slice(2, -2);
       return (
         <strong key={index} className={styles.boldText}>
-          {formatInlineContent(inner, sourceByReference, onOpenSighting)}
+          {formatInlineContent(inner, sourceByReference, onOpenSource)}
         </strong>
       );
     }
@@ -131,7 +131,7 @@ function formatInlineContent(
       const inner = token.slice(1, -1);
       return (
         <em key={index} className={styles.italicText}>
-          {formatInlineContent(inner, sourceByReference, onOpenSighting)}
+          {formatInlineContent(inner, sourceByReference, onOpenSource)}
         </em>
       );
     }
@@ -141,7 +141,7 @@ function formatInlineContent(
       const inner = token.slice(1, -1);
       return (
         <em key={index} className={styles.italicText}>
-          {formatInlineContent(inner, sourceByReference, onOpenSighting)}
+          {formatInlineContent(inner, sourceByReference, onOpenSource)}
         </em>
       );
     }
@@ -175,11 +175,11 @@ function formatChatMessage(text: string): ReactNode[] {
 function FormattedAnswer({
   text,
   citations,
-  onOpenSighting,
+  onOpenSource,
 }: {
   text: string;
   citations: Citation[];
-  onOpenSighting?: (sightingId: string) => void;
+  onOpenSource?: (source: Citation) => void;
 }) {
   const sourceByReference = useMemo(
     () => new Map(citations.map((s) => [s.reference.toLowerCase(), s])),
@@ -198,7 +198,7 @@ function FormattedAnswer({
         <ul key={`list-${blocks.length}`} className={styles.answerList}>
           {listItems.map((item, idx) => (
             <li key={idx}>
-              {formatInlineContent(item, sourceByReference, onOpenSighting)}
+              {formatInlineContent(item, sourceByReference, onOpenSource)}
             </li>
           ))}
         </ul>
@@ -219,7 +219,7 @@ function FormattedAnswer({
       const content = rawLine.replace(/^##\s+/, "");
       blocks.push(
         <h3 key={`h2-${blocks.length}`} className={styles.answerHeading2}>
-          {formatInlineContent(content, sourceByReference, onOpenSighting)}
+          {formatInlineContent(content, sourceByReference, onOpenSource)}
         </h3>
       );
       continue;
@@ -231,7 +231,7 @@ function FormattedAnswer({
       const content = rawLine.replace(/^#{3,4}\s+/, "");
       blocks.push(
         <h4 key={`h3-${blocks.length}`} className={styles.answerHeading3}>
-          {formatInlineContent(content, sourceByReference, onOpenSighting)}
+          {formatInlineContent(content, sourceByReference, onOpenSource)}
         </h4>
       );
       continue;
@@ -248,7 +248,7 @@ function FormattedAnswer({
     flushList();
     blocks.push(
       <p key={`p-${blocks.length}`} className={styles.answerParagraph}>
-        {formatInlineContent(rawLine, sourceByReference, onOpenSighting)}
+        {formatInlineContent(rawLine, sourceByReference, onOpenSource)}
       </p>
     );
   }
@@ -262,12 +262,22 @@ export function ChatPanel({
   api,
   researcher,
   onOpenSighting,
+  onOpenSpecies,
+  onOpenSite,
 }: {
   api: ApiClient;
   researcher: Researcher;
   onOpenSighting?: (sightingId: string) => void;
+  onOpenSpecies?: (id: string) => void;
+  onOpenSite?: (id: string) => void;
 }) {
   const { t } = useTranslation();
+  const openCitation = useCallback((source: Citation) => {
+    if (!source.id) return;
+    if (source.type === "species") onOpenSpecies?.(source.id);
+    else if (source.type === "site") onOpenSite?.(source.id);
+    else if (source.type === "sighting") onOpenSighting?.(source.id);
+  }, [onOpenSighting, onOpenSite, onOpenSpecies]);
   const [channels, setChannels] = useState<ChatChannel[]>([]);
   const [contacts, setContacts] = useState<Researcher[]>([]);
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
@@ -1029,7 +1039,7 @@ export function ChatPanel({
                     <FormattedAnswer
                       text={message.message_text}
                       citations={message.citations || []}
-                      onOpenSighting={onOpenSighting}
+                      onOpenSource={openCitation}
                     />
                   ) : (
                     /* 4. Mensaje de texto normal */
@@ -1050,14 +1060,10 @@ export function ChatPanel({
                             key={`${c.reference}-${i}`}
                             type="button"
                             className={styles.citationBadge}
-                            onClick={() => {
-                              if (c.type === "sighting" && c.id && onOpenSighting) {
-                                onOpenSighting(c.id);
-                              }
-                            }}
-                            title={`Abrir registro ${c.reference}`}
+                            onClick={() => openCitation(c)}
+                            title={c.type === "species" ? "Abrir ficha de especie" : c.type === "site" ? "Abrir ficha del sitio" : `Abrir registro ${c.reference}`}
                           >
-                            <strong>{c.label || c.reference}</strong>
+                            <strong>{c.label || (c.type === "species" ? "Ficha de especie" : c.type === "site" ? "Ficha de sitio" : c.reference)}</strong>
                           </button>
                         ))}
                       </div>

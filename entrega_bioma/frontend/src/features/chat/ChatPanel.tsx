@@ -27,7 +27,7 @@ import {
 
 import { useQuery } from "@tanstack/react-query";
 
-import type { CopilotUsageResponse, Researcher } from "../../domain/contracts";
+import type { ChatChannel, CopilotUsageResponse, Researcher } from "../../domain/contracts";
 import { ApiClient } from "../../shared/api/client";
 import { AnimalAvatar } from "../../shared/components/AnimalAvatar";
 import styles from "./ChatPanel.module.css";
@@ -39,17 +39,7 @@ type Citation = {
   label?: string;
 };
 
-type Channel = {
-  channel_id: string;
-  channel_type: "direct" | "group";
-  name: string | null;
-  display_name: string;
-  message_count: number;
-  unread_count: number;
-  last_message_at: string | null;
-  created_at: string;
-  updated_at: string;
-};
+type SidebarFilter = "chats" | "groups";
 
 type Message = {
   message_id: string;
@@ -82,9 +72,9 @@ type ChatRealtimeEvent = {
 function formatInlineContent(
   text: string,
   sourceByReference: Map<string, Citation>,
-  onOpenSighting?: (sightingId: string) => void
+  onOpenSource?: (source: Citation) => void
 ): ReactNode[] {
-  const tokens = text.split(/(@copilot\b|\[?obs-[A-Za-z0-9-]+\]?|\*\*[^*]+\*\*|\*[^*\n]+\*|_[^_\n]+_|`[^`]+`)/gi);
+  const tokens = text.split(/(@copilot\b|\[?(?:obs|species|site)-[A-Za-z0-9-]+\]?|\*\*[^*]+\*\*|\*[^*\n]+\*|_[^_\n]+_|`[^`]+`)/gi);
 
   return tokens.map((token, index) => {
     if (!token) return null;
@@ -100,16 +90,16 @@ function formatInlineContent(
     }
 
     // Cita autorizada [obs-XXXX]
-    if (/^\[?obs-[A-Za-z0-9-]+\]?$/i.test(token)) {
+    if (/^\[?(?:obs|species|site)-[A-Za-z0-9-]+\]?$/i.test(token)) {
       const reference = token.replaceAll("[", "").replaceAll("]", "").toLowerCase();
       const source = sourceByReference.get(reference);
-      if (source && source.id && onOpenSighting) {
+      if (source && source.id && onOpenSource) {
         return (
           <button
             className={styles.inlineCitationPill}
             type="button"
             key={index}
-            onClick={() => onOpenSighting(source.id!)}
+            onClick={() => onOpenSource(source)}
             title={`Abrir registro ${source.reference}`}
           >
             <span className={styles.citationIcon}><Leaf /></span>
@@ -131,7 +121,7 @@ function formatInlineContent(
       const inner = token.slice(2, -2);
       return (
         <strong key={index} className={styles.boldText}>
-          {formatInlineContent(inner, sourceByReference, onOpenSighting)}
+          {formatInlineContent(inner, sourceByReference, onOpenSource)}
         </strong>
       );
     }
@@ -141,7 +131,7 @@ function formatInlineContent(
       const inner = token.slice(1, -1);
       return (
         <em key={index} className={styles.italicText}>
-          {formatInlineContent(inner, sourceByReference, onOpenSighting)}
+          {formatInlineContent(inner, sourceByReference, onOpenSource)}
         </em>
       );
     }
@@ -151,7 +141,7 @@ function formatInlineContent(
       const inner = token.slice(1, -1);
       return (
         <em key={index} className={styles.italicText}>
-          {formatInlineContent(inner, sourceByReference, onOpenSighting)}
+          {formatInlineContent(inner, sourceByReference, onOpenSource)}
         </em>
       );
     }
@@ -185,11 +175,11 @@ function formatChatMessage(text: string): ReactNode[] {
 function FormattedAnswer({
   text,
   citations,
-  onOpenSighting,
+  onOpenSource,
 }: {
   text: string;
   citations: Citation[];
-  onOpenSighting?: (sightingId: string) => void;
+  onOpenSource?: (source: Citation) => void;
 }) {
   const sourceByReference = useMemo(
     () => new Map(citations.map((s) => [s.reference.toLowerCase(), s])),
@@ -208,7 +198,7 @@ function FormattedAnswer({
         <ul key={`list-${blocks.length}`} className={styles.answerList}>
           {listItems.map((item, idx) => (
             <li key={idx}>
-              {formatInlineContent(item, sourceByReference, onOpenSighting)}
+              {formatInlineContent(item, sourceByReference, onOpenSource)}
             </li>
           ))}
         </ul>
@@ -229,7 +219,7 @@ function FormattedAnswer({
       const content = rawLine.replace(/^##\s+/, "");
       blocks.push(
         <h3 key={`h2-${blocks.length}`} className={styles.answerHeading2}>
-          {formatInlineContent(content, sourceByReference, onOpenSighting)}
+          {formatInlineContent(content, sourceByReference, onOpenSource)}
         </h3>
       );
       continue;
@@ -241,7 +231,7 @@ function FormattedAnswer({
       const content = rawLine.replace(/^#{3,4}\s+/, "");
       blocks.push(
         <h4 key={`h3-${blocks.length}`} className={styles.answerHeading3}>
-          {formatInlineContent(content, sourceByReference, onOpenSighting)}
+          {formatInlineContent(content, sourceByReference, onOpenSource)}
         </h4>
       );
       continue;
@@ -258,7 +248,7 @@ function FormattedAnswer({
     flushList();
     blocks.push(
       <p key={`p-${blocks.length}`} className={styles.answerParagraph}>
-        {formatInlineContent(rawLine, sourceByReference, onOpenSighting)}
+        {formatInlineContent(rawLine, sourceByReference, onOpenSource)}
       </p>
     );
   }
@@ -272,18 +262,29 @@ export function ChatPanel({
   api,
   researcher,
   onOpenSighting,
+  onOpenSpecies,
+  onOpenSite,
 }: {
   api: ApiClient;
   researcher: Researcher;
   onOpenSighting?: (sightingId: string) => void;
+  onOpenSpecies?: (id: string) => void;
+  onOpenSite?: (id: string) => void;
 }) {
   const { t } = useTranslation();
-  const [channels, setChannels] = useState<Channel[]>([]);
+  const openCitation = useCallback((source: Citation) => {
+    if (!source.id) return;
+    if (source.type === "species") onOpenSpecies?.(source.id);
+    else if (source.type === "site") onOpenSite?.(source.id);
+    else if (source.type === "sighting") onOpenSighting?.(source.id);
+  }, [onOpenSighting, onOpenSite, onOpenSpecies]);
+  const [channels, setChannels] = useState<ChatChannel[]>([]);
   const [contacts, setContacts] = useState<Researcher[]>([]);
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [sidebarFilter, setSidebarFilter] = useState<SidebarFilter>("chats");
   const [isSending, setIsSending] = useState(false);
   const [isCopilotThinking, setIsCopilotThinking] = useState(false);
   const [showUsageModal, setShowUsageModal] = useState(false);
@@ -302,6 +303,7 @@ export function ChatPanel({
   const [groupMemberSearch, setGroupMemberSearch] = useState("");
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [selectedAdditionalMemberIds, setSelectedAdditionalMemberIds] = useState<string[]>([]);
+  const [additionalMemberSearch, setAdditionalMemberSearch] = useState("");
 
 
   const transcriptEndRef = useRef<HTMLDivElement>(null);
@@ -311,7 +313,7 @@ export function ChatPanel({
   const showCopilotSuggestion = draft.trim() === "@";
 
   const refreshChannels = useCallback(async () => {
-    const channelsData = await api.get<Channel[]>("/v1/chat/channels");
+    const channelsData = await api.get<ChatChannel[]>("/v1/chat/channels");
     setChannels(channelsData);
     setActiveChannelId((current) => current ?? channelsData[0]?.channel_id ?? null);
   }, [api]);
@@ -346,6 +348,7 @@ export function ChatPanel({
     try {
       await api.post(`/v1/chat/channels/${activeChannelId}/members`, { member_ids: selectedAdditionalMemberIds });
       setSelectedAdditionalMemberIds([]);
+      setAdditionalMemberSearch("");
       setShowAddMembersModal(false);
       await openMembers();
     } catch { setError(t("errors.network")); }
@@ -379,7 +382,7 @@ export function ChatPanel({
     async function loadInitialData() {
       try {
         const [channelsData, directoryData] = await Promise.all([
-          api.get<Channel[]>("/v1/chat/channels"),
+          api.get<ChatChannel[]>("/v1/chat/channels"),
           api.get<DirectoryResponse>("/v1/researchers"),
         ]);
         if (!isMounted) return;
@@ -522,6 +525,12 @@ export function ChatPanel({
     );
   }, [channels, searchQuery]);
 
+  const directChannelsByContactName = useMemo(() => new Map(
+    channels
+      .filter((channel) => channel.channel_type === "direct")
+      .map((channel) => [channel.display_name.toLocaleLowerCase(), channel]),
+  ), [channels]);
+
   // Filtrado de investigadores dentro del modal de nuevo grupo
   const filteredGroupContacts = useMemo(() => {
     if (!groupMemberSearch.trim()) return contacts;
@@ -532,6 +541,14 @@ export function ChatPanel({
         c.role_title.toLowerCase().includes(q)
     );
   }, [contacts, groupMemberSearch]);
+
+  const availableAdditionalMembers = useMemo(() => {
+    const query = additionalMemberSearch.trim().toLocaleLowerCase();
+    return contacts.filter((contact) => {
+      const alreadyInGroup = channelMembers.some((member) => member.researcher_id === contact.researcher_id);
+      return !alreadyInGroup && (!query || contact.full_name.toLocaleLowerCase().includes(query) || contact.role_title.toLocaleLowerCase().includes(query));
+    });
+  }, [additionalMemberSearch, channelMembers, contacts]);
 
   function toggleGroupMember(memberId: string) {
     setSelectedGroupMemberIds((prev) =>
@@ -549,7 +566,7 @@ export function ChatPanel({
     setIsCreatingGroup(true);
     setError(null);
     try {
-      const channel = await api.post<Channel>("/v1/chat/channels", {
+      const channel = await api.post<ChatChannel>("/v1/chat/channels", {
         channel_type: "group",
         name: name,
         member_ids: selectedGroupMemberIds,
@@ -576,7 +593,7 @@ export function ChatPanel({
 
     try {
       setError(null);
-      const channel = await api.post<Channel>("/v1/chat/channels", {
+      const channel = await api.post<ChatChannel>("/v1/chat/channels", {
         channel_type: "direct",
         member_ids: [contact.researcher_id],
       });
@@ -729,16 +746,41 @@ export function ChatPanel({
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+          <div className={styles.sidebarFilters} role="tablist" aria-label={t("chat.sidebarFilters")}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={sidebarFilter === "chats"}
+              className={`${styles.sidebarFilter} ${sidebarFilter === "chats" ? styles.sidebarFilterActive : ""}`}
+              onClick={() => setSidebarFilter("chats")}
+            >
+              <MessageCircle aria-hidden="true" />
+              {t("chat.chats")}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={sidebarFilter === "groups"}
+              className={`${styles.sidebarFilter} ${sidebarFilter === "groups" ? styles.sidebarFilterActive : ""}`}
+              onClick={() => setSidebarFilter("groups")}
+            >
+              <Users aria-hidden="true" />
+              {t("chat.groups")}
+            </button>
+          </div>
         </div>
 
         <div className={styles.contactsList}>
-          {/* Sección de Investigadores */}
-          <div className={styles.sectionLabel}>{t("chat.researchers")}</div>
+          {sidebarFilter === "chats" && <>
+          <div className={styles.sectionLabel}>{t("chat.chats")}</div>
           {filteredContacts.map((contact) => {
             const isContactActive =
               activeChannel?.channel_type === "direct" &&
               activeChannel.display_name.toLowerCase() ===
                 contact.full_name.toLowerCase();
+            const directChannel = directChannelsByContactName.get(contact.full_name.toLocaleLowerCase());
+            const preview = directChannel?.last_message_preview ||
+              (directChannel ? t("chat.noMessagesYet") : contact.role_title);
 
             return (
               <button
@@ -755,15 +797,19 @@ export function ChatPanel({
                 />
                 <div className={styles.contactInfo}>
                   <span className={styles.contactName}>{contact.full_name}</span>
-                  <span className={styles.contactRole}>{contact.role_title}</span>
+                  <span className={styles.contactRole}>{preview}</span>
                 </div>
+                {directChannel && directChannel.unread_count > 0 && (
+                  <span className={styles.messageBadge}>{directChannel.unread_count}</span>
+                )}
               </button>
             );
           })}
+          </>}
 
-          {/* Sección de Canales de Campo */}
+          {sidebarFilter === "groups" && <>
           <div className={styles.sectionHeaderRow}>
-            <div className={styles.sectionLabel}>{t("chat.channels")}</div>
+            <div className={styles.sectionLabel}>{t("chat.groups")}</div>
             <button
               type="button"
               className={styles.createGroupBtn}
@@ -792,7 +838,7 @@ export function ChatPanel({
                   {channel.display_name}
                 </span>
                 <span className={styles.contactRole}>
-                  {channel.message_count} {channel.message_count === 1 ? "mensaje" : "mensajes"}
+                  {channel.last_message_preview || t("chat.noMessagesYet")}
                 </span>
               </div>
               {channel.unread_count > 0 && (
@@ -802,6 +848,10 @@ export function ChatPanel({
               )}
             </button>
           ))}
+          {filteredChannels.filter((channel) => channel.channel_type === "group").length === 0 && (
+            <p className={styles.emptySidebarState}>{t("chat.emptyChannels")}</p>
+          )}
+          </>}
 
         </div>
       </aside>
@@ -989,7 +1039,7 @@ export function ChatPanel({
                     <FormattedAnswer
                       text={message.message_text}
                       citations={message.citations || []}
-                      onOpenSighting={onOpenSighting}
+                      onOpenSource={openCitation}
                     />
                   ) : (
                     /* 4. Mensaje de texto normal */
@@ -1010,14 +1060,10 @@ export function ChatPanel({
                             key={`${c.reference}-${i}`}
                             type="button"
                             className={styles.citationBadge}
-                            onClick={() => {
-                              if (c.type === "sighting" && c.id && onOpenSighting) {
-                                onOpenSighting(c.id);
-                              }
-                            }}
-                            title={`Abrir registro ${c.reference}`}
+                            onClick={() => openCitation(c)}
+                            title={c.type === "species" ? "Abrir ficha de especie" : c.type === "site" ? "Abrir ficha del sitio" : `Abrir registro ${c.reference}`}
                           >
-                            <strong>{c.label || c.reference}</strong>
+                            <strong>{c.label || (c.type === "species" ? "Ficha de especie" : c.type === "site" ? "Ficha de sitio" : c.reference)}</strong>
                           </button>
                         ))}
                       </div>
@@ -1217,8 +1263,13 @@ export function ChatPanel({
             <div className={styles.groupMembersList}>
               {channelMembers.map((member) => (
                 <div className={styles.groupMemberRow} key={member.researcher_id}>
-                  <AnimalAvatar avatarKey={member.animal_avatar_key} seed={member.researcher_id} />
-                  <div><strong>{member.full_name}</strong><span>{member.role_title}</span></div>
+                  <div className={styles.memberAvatar}>
+                    <AnimalAvatar avatarKey={member.animal_avatar_key} seed={member.researcher_id} />
+                  </div>
+                  <div className={styles.memberDetails}>
+                    <strong>{member.full_name}</strong>
+                    <span>{member.role_title}</span>
+                  </div>
                   <small>{t("chat.level", { level: member.accreditation_level })}</small>
                 </div>
               ))}
@@ -1229,17 +1280,28 @@ export function ChatPanel({
 
       {showAddMembersModal && activeChannelId && (
         <div className={styles.modalOverlay} onClick={() => setShowAddMembersModal(false)}>
-          <div className={styles.createGroupCard} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
-            <div className={styles.modalHeader}><h3>{t("chat.addMembers")}</h3><button type="button" className={styles.closeButton} onClick={() => setShowAddMembersModal(false)}><X aria-hidden="true" /></button></div>
-            <div className={styles.memberSelectorList}>
-              {contacts.filter((contact) => !channelMembers.some((member) => member.researcher_id === contact.researcher_id)).map((contact) => {
+          <div className={styles.addMembersModal} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label={t("chat.addMembers")}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalTitleRow}>
+                <div className={styles.modalIconWrap}><UserPlus aria-hidden="true" /></div>
+                <div><h3 className={styles.modalTitleText}>{t("chat.addMembers")}</h3><p className={styles.modalSubtitleText}>{t("chat.membersCount", { count: selectedAdditionalMemberIds.length })}</p></div>
+              </div>
+              <button type="button" className={styles.closeButton} onClick={() => setShowAddMembersModal(false)} aria-label={t("common.close")}><X aria-hidden="true" /></button>
+            </div>
+            <div className={styles.memberSearchBox}>
+              <Search aria-hidden="true" />
+              <input type="search" className={styles.memberSearchInput} placeholder={t("chat.searchColleague")} value={additionalMemberSearch} onChange={(event) => setAdditionalMemberSearch(event.target.value)} autoFocus />
+            </div>
+            <div className={`${styles.memberSelectorList} ${styles.addMembersList}`}>
+              {availableAdditionalMembers.map((contact) => {
                 const selected = selectedAdditionalMemberIds.includes(contact.researcher_id);
-                return <button type="button" key={contact.researcher_id} className={`${styles.memberSelectItem} ${selected ? styles.selected : ""}`} onClick={() => setSelectedAdditionalMemberIds((ids) => selected ? ids.filter((id) => id !== contact.researcher_id) : [...ids, contact.researcher_id])}>
-                  <AnimalAvatar avatarKey={contact.animal_avatar_key} seed={contact.researcher_id} /><span className={styles.memberSelectInfo}><span className={styles.memberSelectName}>{contact.full_name}</span><span className={styles.memberSelectRole}>{contact.role_title}</span></span>{selected && <Check aria-hidden="true" />}
+                return <button type="button" key={contact.researcher_id} className={`${styles.memberSelectItem} ${selected ? styles.selected : ""}`} onClick={() => setSelectedAdditionalMemberIds((ids) => selected ? ids.filter((id) => id !== contact.researcher_id) : [...ids, contact.researcher_id])} aria-pressed={selected}>
+                  <AnimalAvatar avatarKey={contact.animal_avatar_key} seed={contact.researcher_id} /><span className={styles.memberSelectInfo}><span className={styles.memberSelectName}>{contact.full_name}</span><span className={styles.memberSelectRole}>{contact.role_title}</span></span><span className={styles.memberLevelBadge}>{t("chat.level", { level: contact.accreditation_level })}</span>{selected && <span className={styles.memberSelectedCheck}><Check aria-hidden="true" /></span>}
                 </button>;
               })}
+              {availableAdditionalMembers.length === 0 && <p className={styles.emptyMemberSearch}>{t("chat.noMembersFound")}</p>}
             </div>
-            <div className={styles.modalActions}><button type="button" className={styles.cancelBtn} onClick={() => setShowAddMembersModal(false)}>{t("common.cancel")}</button><button type="button" className={styles.createBtn} disabled={!selectedAdditionalMemberIds.length} onClick={() => void addMembers()}>{t("chat.addMembers")}</button></div>
+            <div className={styles.modalActions}><button type="button" className={styles.cancelBtn} onClick={() => setShowAddMembersModal(false)}>{t("common.cancel")}</button><button type="button" className={styles.submitBtn} disabled={!selectedAdditionalMemberIds.length} onClick={() => void addMembers()}><UserPlus aria-hidden="true" />{t("chat.addMembers")}</button></div>
           </div>
         </div>
       )}

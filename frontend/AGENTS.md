@@ -1,5 +1,7 @@
 # Frontend Bioma — Contexto para agentes
 
+- Las referencias del copiloto se resuelven por `source_type`: avistamientos abren su detalle y `species`/`site` abren los modales del catálogo. Nunca inferir el tipo a partir del texto visible cuando el API ya lo entrega.
+
 ## Misión
 
 El frontend es una aplicación React/TypeScript para exploración de avistamientos, copiloto y perfil. Debe ser sobrio, cálido y científico; la referencia visual es un dashboard natural con navegación lateral verde, tarjetas marfil, acentos dorados y una versión móvil clara. Este repositorio se ejecuta de forma independiente y consume el API configurado por `VITE_API_BASE_URL`.

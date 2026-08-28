@@ -59,6 +59,28 @@ class EmbeddingWorker:
             logger.exception("chat_embedding_failed message_id=%s", row["message_id"])
         return True
 
+    async def run_catalog_once(self) -> bool:
+        async with self._database.connection() as connection, connection.transaction():
+            row = await connection.fetchrow("SELECT * FROM bio_fn_claim_catalog_embedding_job()")
+        if row is None:
+            return False
+        try:
+            embedding = await self._embeddings.embed_document(row["catalog_text"])
+            async with self._database.connection() as connection:
+                await connection.execute(
+                    "SELECT bio_fn_store_catalog_embedding($1, $2, $3::vector, $4)",
+                    row["catalog_type"], row["catalog_id"], str(list(embedding)), self._embeddings.embedding_model_name,
+                )
+            logger.info("catalog_embedding_ready type=%s id=%s", row["catalog_type"], row["catalog_id"])
+        except Exception as error:
+            async with self._database.connection() as connection:
+                await connection.execute(
+                    "SELECT bio_fn_mark_catalog_embedding_failed($1, $2, $3)",
+                    row["catalog_type"], row["catalog_id"], type(error).__name__,
+                )
+            logger.exception("catalog_embedding_failed type=%s id=%s", row["catalog_type"], row["catalog_id"])
+        return True
+
     async def run_forever(self) -> None:
         base_poll = max(10, self._settings.embedding_worker_poll_seconds)
         idle_seconds = base_poll
@@ -68,6 +90,8 @@ class EmbeddingWorker:
                 processed = await self.run_once()
                 if not processed:
                     processed = await self.run_chat_once()
+                if not processed:
+                    processed = await self.run_catalog_once()
                 if processed:
                     idle_seconds = base_poll
                     await asyncio.sleep(0.5)

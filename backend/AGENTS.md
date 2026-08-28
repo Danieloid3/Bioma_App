@@ -1,5 +1,7 @@
 # Backend Bioma — Contexto para agentes
 
+- El catálogo de especies y sitios tiene embeddings y citas propias; `CopilotSource.source_type` distingue `sighting`, `message`, `species` y `site`. La auditoría nunca debe guardar una fuente de catálogo como si fuera un avistamiento.
+
 ## Misión
 
 El backend expone la API de Bioma, incluye el directorio `database/` y coordina casos de uso delgados. No reimplementa la autorización de avistamientos: fija el actor autenticado por transacción y llama a PostgreSQL, donde RLS es la autoridad final.

@@ -5,7 +5,13 @@ from app.application.use_cases.answer_copilot_question import (
     NO_CITED_SOURCES_RESPONSE,
     AnswerCopilotQuestion,
 )
-from app.domain.models import Actor, ConversationMessage, CopilotAnswer, CopilotSource
+from app.domain.models import (
+    Actor,
+    CatalogKnowledgeItem,
+    ConversationMessage,
+    CopilotAnswer,
+    CopilotSource,
+)
 
 
 class FakeEmbeddings:
@@ -204,3 +210,21 @@ async def test_citations_match_references_case_insensitively() -> None:
     ).execute(actor=actor(), question="¿Qué ave fue registrada?")
 
     assert answer.sources == (source,)
+
+
+async def test_catalog_citation_is_validated_and_returned_as_its_own_source_type() -> None:
+    catalog_id = UUID("80000000-0000-0000-0000-000000000014")
+
+    class CatalogCopilot:
+        async def answer(self, **_: object) -> CopilotAnswer:
+            return CopilotAnswer(f"El jaguar es un felino [species-{catalog_id}].", (), "fake", 2, 3)
+
+    async def context(_: list[float]) -> list[CopilotSource]: return []
+    async def catalog(_: list[float]) -> list[CatalogKnowledgeItem]:
+        return [CatalogKnowledgeItem(catalog_type="species", catalog_id=catalog_id, source_reference=f"species-{catalog_id}", common_name="Jaguar", description="Felino silvestre")]
+    async def audit(**_: object) -> object: return UUID("80000000-0000-0000-0000-000000000015")
+
+    answer = await AnswerCopilotQuestion(embeddings=FakeEmbeddings(), copilot=CatalogCopilot(), context=context, audit=audit, catalog=catalog).execute(actor=actor(), question="Háblame del jaguar")
+    assert len(answer.sources) == 1
+    assert answer.sources[0].source_type == "species"
+    assert answer.sources[0].sighting_id == catalog_id

@@ -23,7 +23,7 @@ function createMessageId() {
   return crypto.randomUUID();
 }
 
-export function CopilotPanel({ api, researcherId, onOpenSighting }: { api: ApiClient; researcherId: string; onOpenSighting: (sightingId: string) => void }) {
+export function CopilotPanel({ api, researcherId, onOpenSighting, onOpenSpecies, onOpenSite }: { api: ApiClient; researcherId: string; onOpenSighting: (sightingId: string) => void; onOpenSpecies: (id: string) => void; onOpenSite: (id: string) => void }) {
   const { i18n, t } = useTranslation();
   const [question, setQuestion] = useState("");
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -308,7 +308,7 @@ export function CopilotPanel({ api, researcherId, onOpenSighting }: { api: ApiCl
               {message.role === "assistant" && <span className={styles.messageMark} aria-hidden="true"><Leaf /></span>}
               <div className={styles.bubble}>
                 {message.role === "assistant" ? (
-                  <FormattedAnswer text={message.text} sources={message.sources} onOpenSighting={onOpenSighting} />
+                  <FormattedAnswer text={message.text} sources={message.sources} onOpenSighting={onOpenSighting} onOpenSpecies={onOpenSpecies} onOpenSite={onOpenSite} />
                 ) : (
                   <p>{message.text}</p>
                 )}
@@ -320,9 +320,9 @@ export function CopilotPanel({ api, researcherId, onOpenSighting }: { api: ApiCl
                         className={styles.source}
                         type="button"
                         key={`${source.sighting_id}-${index}`}
-                        onClick={() => onOpenSighting(source.sighting_id)}
+                        onClick={() => source.source_type === "species" ? onOpenSpecies(source.sighting_id) : source.source_type === "site" ? onOpenSite(source.sighting_id) : onOpenSighting(source.sighting_id)}
                       >
-                        <strong>{source.observation_reference}</strong>
+                        <strong>{source.source_type === "species" ? "Ficha de especie" : source.source_type === "site" ? "Ficha de sitio" : source.observation_reference}</strong>
                         <span>{source.species_common_name}</span>
                       </button>
                     ))}
@@ -520,15 +520,17 @@ export function CopilotPanel({ api, researcherId, onOpenSighting }: { api: ApiCl
 function formatInlineContent(
   text: string,
   sourceByReference: Map<string, CopilotAnswer["sources"][number]>,
-  onOpenSighting: (sightingId: string) => void
+  onOpenSighting: (sightingId: string) => void,
+  onOpenSpecies: (id: string) => void,
+  onOpenSite: (id: string) => void,
 ): ReactNode[] {
-  const tokens = text.split(/(\[?obs-[A-Za-z0-9-]+\]?|\*\*[^*]+\*\*|\*[^*\n]+\*|_[^_\n]+_|`[^`]+`)/gi);
+  const tokens = text.split(/(\[?(?:obs|species|site)-[A-Za-z0-9-]+\]?|\*\*[^*]+\*\*|\*[^*\n]+\*|_[^_\n]+_|`[^`]+`)/gi);
 
   return tokens.map((token, index) => {
     if (!token) return null;
 
     // Cita autorizada [obs-XXXX]
-    if (/^\[?obs-[A-Za-z0-9-]+\]?$/i.test(token)) {
+    if (/^\[?(?:obs|species|site)-[A-Za-z0-9-]+\]?$/i.test(token)) {
       const reference = token.replaceAll("[", "").replaceAll("]", "").toLowerCase();
       const source = sourceByReference.get(reference);
       if (source) {
@@ -537,7 +539,7 @@ function formatInlineContent(
             className={styles.inlineCitationPill}
             type="button"
             key={index}
-            onClick={() => onOpenSighting(source.sighting_id)}
+            onClick={() => source.source_type === "species" ? onOpenSpecies(source.sighting_id) : source.source_type === "site" ? onOpenSite(source.sighting_id) : onOpenSighting(source.sighting_id)}
             title={`${source.species_common_name} (${source.observation_reference})`}
           >
             <span className={styles.citationIcon}><Leaf /></span>
@@ -555,7 +557,7 @@ function formatInlineContent(
       const inner = token.slice(2, -2);
       return (
         <strong key={index} className={styles.boldText}>
-          {formatInlineContent(inner, sourceByReference, onOpenSighting)}
+          {formatInlineContent(inner, sourceByReference, onOpenSighting, onOpenSpecies, onOpenSite)}
         </strong>
       );
     }
@@ -565,7 +567,7 @@ function formatInlineContent(
       const inner = token.slice(1, -1);
       return (
         <em key={index} className={styles.italicText}>
-          {formatInlineContent(inner, sourceByReference, onOpenSighting)}
+          {formatInlineContent(inner, sourceByReference, onOpenSighting, onOpenSpecies, onOpenSite)}
         </em>
       );
     }
@@ -575,7 +577,7 @@ function formatInlineContent(
       const inner = token.slice(1, -1);
       return (
         <em key={index} className={styles.italicText}>
-          {formatInlineContent(inner, sourceByReference, onOpenSighting)}
+          {formatInlineContent(inner, sourceByReference, onOpenSighting, onOpenSpecies, onOpenSite)}
         </em>
       );
     }
@@ -593,10 +595,14 @@ function FormattedAnswer({
   text,
   sources,
   onOpenSighting,
+  onOpenSpecies,
+  onOpenSite,
 }: {
   text: string;
   sources: CopilotAnswer["sources"];
   onOpenSighting: (sightingId: string) => void;
+  onOpenSpecies: (id: string) => void;
+  onOpenSite: (id: string) => void;
 }) {
   const sourceByReference = useMemo(
     () => new Map(sources.map((source) => [source.observation_reference.toLowerCase(), source])),
@@ -615,7 +621,7 @@ function FormattedAnswer({
         <ul key={`list-${blocks.length}`} className={styles.answerList}>
           {listItems.map((item, idx) => (
             <li key={idx}>
-              {formatInlineContent(item, sourceByReference, onOpenSighting)}
+              {formatInlineContent(item, sourceByReference, onOpenSighting, onOpenSpecies, onOpenSite)}
             </li>
           ))}
         </ul>
@@ -636,7 +642,7 @@ function FormattedAnswer({
       const content = rawLine.replace(/^##\s+/, "");
       blocks.push(
         <h3 key={`h2-${blocks.length}`} className={styles.answerHeading2}>
-          {formatInlineContent(content, sourceByReference, onOpenSighting)}
+          {formatInlineContent(content, sourceByReference, onOpenSighting, onOpenSpecies, onOpenSite)}
         </h3>
       );
       continue;
@@ -648,7 +654,7 @@ function FormattedAnswer({
       const content = rawLine.replace(/^#{3,4}\s+/, "");
       blocks.push(
         <h4 key={`h3-${blocks.length}`} className={styles.answerHeading3}>
-          {formatInlineContent(content, sourceByReference, onOpenSighting)}
+          {formatInlineContent(content, sourceByReference, onOpenSighting, onOpenSpecies, onOpenSite)}
         </h4>
       );
       continue;
@@ -665,7 +671,7 @@ function FormattedAnswer({
     flushList();
     blocks.push(
       <p key={`p-${blocks.length}`} className={styles.answerParagraph}>
-        {formatInlineContent(rawLine, sourceByReference, onOpenSighting)}
+        {formatInlineContent(rawLine, sourceByReference, onOpenSighting, onOpenSpecies, onOpenSite)}
       </p>
     );
   }

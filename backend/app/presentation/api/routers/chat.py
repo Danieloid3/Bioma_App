@@ -1,5 +1,6 @@
 import json
 import re
+from collections.abc import Sequence
 from dataclasses import asdict
 from datetime import datetime
 from typing import Annotated
@@ -244,9 +245,9 @@ async def ask_channel_copilot(
             sightings = await repository.retrieve_shared_sighting_context(channel_id, embedding)
             return [*messages, *sightings]
 
-    async def catalog():
+    async def catalog(embedding: Sequence[float]):
         async with database.actor_transaction(actor.researcher_id) as connection:
-            return await PostgresSightingRepository(connection).get_knowledge_catalog()
+            return await PostgresSightingRepository(connection).get_knowledge_catalog(embedding)
 
     async def audit(**kwargs: object):
         async with database.actor_transaction(actor.researcher_id) as connection:

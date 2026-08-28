@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Bird, Bot, FileBarChart, House, Languages, Leaf, MapPin, Menu, MessageCircle, Search, Settings, UsersRound, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 
-import type { AuthenticationResponse, Researcher } from "../domain/contracts";
+import type { AuthenticationResponse, CatalogResponse, Researcher, SiteCatalogResponse } from "../domain/contracts";
 import { LoginPage } from "../features/auth/LoginPage";
-import { ResearchersPanel, SitesPanel, SpeciesPanel } from "../features/catalog/CatalogPanels";
+import { ResearchersPanel, SiteDetailModal, SitesPanel, SpeciesDetailModal, SpeciesPanel } from "../features/catalog/CatalogPanels";
 import { CopilotPanel } from "../features/copilot/CopilotPanel";
 import { ChatPanel } from "../features/chat/ChatPanel";
 import { PromptAdminPanel } from "../features/admin/PromptAdminPanel";
@@ -13,28 +14,11 @@ import { ProfilePanel } from "../features/profile/ProfilePanel";
 import { ReportsPanel } from "../features/reports/ReportsPanel";
 import { SightingDetailDialog, SightingsPanel } from "../features/sightings/SightingsPanel";
 import { ApiClient } from "../shared/api/client";
+import { restoreSession } from "../shared/auth/refreshSession";
 import { AnimalAvatar } from "../shared/components/AnimalAvatar";
 import { BiomaLoader } from "../shared/components/BiomaLoader";
 
 type View = "dashboard" | "sightings" | "species" | "sites" | "researchers" | "search" | "chat" | "copilot" | "reports" | "profile" | "admin";
-
-// A refresh token is rotated every time it is consumed. Keep one in-flight
-// restore promise shared by all App mounts in this browser context so React
-// remounts (and any duplicated root during development) cannot race and make
-// the second request look like token reuse.
-let sessionRestorePromise: Promise<AuthenticationResponse> | null = null;
-
-function restoreSession(): Promise<AuthenticationResponse> {
-  if (!sessionRestorePromise) {
-    sessionRestorePromise = new ApiClient(() => null)
-      .post<AuthenticationResponse>("/v1/auth/refresh")
-      .catch((error: unknown) => {
-        sessionRestorePromise = null;
-        throw error;
-      });
-  }
-  return sessionRestorePromise;
-}
 
 export function App() {
   const { i18n, t } = useTranslation();
@@ -47,7 +31,11 @@ export function App() {
   });
   const [menuOpen, setMenuOpen] = useState(false);
   const [selectedSightingId, setSelectedSightingId] = useState<string | null>(null);
+  const [selectedSpeciesId, setSelectedSpeciesId] = useState<string | null>(null);
+  const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
   const api = useMemo(() => new ApiClient(() => token), [token]);
+  const species = useQuery({ queryKey: ["catalog-species", token], queryFn: () => api.get<CatalogResponse>("/v1/species"), enabled: Boolean(token) });
+  const sites = useQuery({ queryKey: ["catalog-sites", token], queryFn: () => api.get<SiteCatalogResponse>("/v1/sites"), enabled: Boolean(token) });
   const nextLanguage = i18n.language.startsWith("es") ? "en" : "es";
 
   useEffect(() => {
@@ -148,6 +136,8 @@ export function App() {
             onLogout={() => void logout()}
             onNavigate={selectView}
             onOpenSighting={setSelectedSightingId}
+            onOpenSpecies={setSelectedSpeciesId}
+            onOpenSite={setSelectedSiteId}
           />
         </div>
         <nav className="mobile-nav" aria-label={t("nav.label")}>
@@ -171,20 +161,22 @@ export function App() {
           onClose={() => setSelectedSightingId(null)}
         />
       )}
+      {selectedSpeciesId && species.data?.items.find((item) => item.species_id === selectedSpeciesId) && <SpeciesDetailModal species={species.data.items.find((item) => item.species_id === selectedSpeciesId)!} onClose={() => setSelectedSpeciesId(null)} />}
+      {selectedSiteId && sites.data?.items.find((item) => item.site_id === selectedSiteId) && <SiteDetailModal site={sites.data.items.find((item) => item.site_id === selectedSiteId)!} onClose={() => setSelectedSiteId(null)} />}
     </main>
   );
 }
 
 
-function AppView({ view, api, researcher, onLogout, onNavigate, onOpenSighting }: { view: View; api: ApiClient; researcher: Researcher; onLogout: () => void; onNavigate: (view: View) => void; onOpenSighting: (sightingId: string) => void }) {
+function AppView({ view, api, researcher, onLogout, onNavigate, onOpenSighting, onOpenSpecies, onOpenSite }: { view: View; api: ApiClient; researcher: Researcher; onLogout: () => void; onNavigate: (view: View) => void; onOpenSighting: (sightingId: string) => void; onOpenSpecies: (id: string) => void; onOpenSite: (id: string) => void }) {
   if (view === "sightings" || view === "search") return <SightingsPanel api={api} currentResearcher={researcher} />;
   if (view === "species") return <SpeciesPanel api={api} />;
   if (view === "sites") return <SitesPanel api={api} />;
   if (view === "researchers") return <ResearchersPanel api={api} />;
-  if (view === "chat") return <ChatPanel api={api} researcher={researcher} onOpenSighting={onOpenSighting} />;
+  if (view === "chat") return <ChatPanel api={api} researcher={researcher} onOpenSighting={onOpenSighting} onOpenSpecies={onOpenSpecies} onOpenSite={onOpenSite} />;
   if (view === "admin") return <PromptAdminPanel api={api} />;
 
-  if (view === "copilot") return <div className="single-column"><CopilotPanel api={api} researcherId={researcher.researcher_id} onOpenSighting={onOpenSighting} /></div>;
+  if (view === "copilot") return <div className="single-column"><CopilotPanel api={api} researcherId={researcher.researcher_id} onOpenSighting={onOpenSighting} onOpenSpecies={onOpenSpecies} onOpenSite={onOpenSite} /></div>;
   if (view === "profile") return <div className="single-column"><ProfilePanel api={api} researcher={researcher} onLogout={onLogout} onNavigate={onNavigate} /></div>;
   if (view === "reports") return <ReportsPanel api={api} onNavigate={onNavigate} />;
   return <DashboardPanel api={api} onNavigate={onNavigate} />;

@@ -104,7 +104,7 @@ export function SpeciesPanel({ api }: { api: ApiClient }) {
   );
 }
 
-function SpeciesDetailModal({
+export function SpeciesDetailModal({
   species,
   onClose,
 }: {
@@ -295,7 +295,7 @@ export function SitesPanel({ api }: { api: ApiClient }) {
   );
 }
 
-function SiteDetailModal({
+export function SiteDetailModal({
   site,
   onClose,
 }: {

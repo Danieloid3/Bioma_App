@@ -11,7 +11,7 @@ Plataforma de monitoreo de fauna silvestre de la Fundación Yarumo. La seguridad
 
 El servicio `migrator` lleva un registro con checksum de cada migración. No se deben editar migraciones ya aplicadas: se agrega una nueva.
 
-El baseline canónico se compone de `001_core_schema.sql`, `002_functions_and_triggers.sql` y `003_seed_data.sql`. Las migraciones `004`–`014` son reparaciones hacia adelante para el worker, la persistencia/auditoría del copiloto, el historial/citas, contador, recibos y vista previa del último mensaje del chat, la rotación de refresh tokens, la gestión de integrantes y los prompts versionados; deben aplicarse también en instalaciones existentes. Los prompts activos se resuelven en PostgreSQL y cada uso queda auditado con su versión.
+El baseline canónico se compone de `001_core_schema.sql`, `002_functions_and_triggers.sql` y `003_seed_data.sql`. Las migraciones `004`–`016` son reparaciones hacia adelante para el worker, la persistencia/auditoría del copiloto, el historial/citas, contador, recibos y vista previa del último mensaje del chat, la rotación de refresh tokens, la gestión de integrantes, los prompts versionados y las fuentes semánticas de catálogo; deben aplicarse también en instalaciones existentes. Los prompts activos se resuelven en PostgreSQL y cada uso queda auditado con su versión.
 
 ## Inicio local
 
@@ -33,7 +33,7 @@ docker compose --profile test run --rm database-tests
 - El API usa `bio_app_user`, sin `BYPASSRLS` ni permisos directos de escritura en tablas de negocio.
 - Cada operación protegida fija `app.current_user_id` con alcance local de transacción.
 - Las funciones SQL registran, editan, anulan y auditan; no hay `DELETE` físico de avistamientos.
-- El copiloto recibe solo el contexto retornado por `bio_fn_retrieve_copilot_context`, que pasa por RLS antes de llegar a LangChain.
+- El copiloto combina avistamientos filtrados por `bio_fn_retrieve_copilot_context` con especies y sitios recuperados semánticamente por `bio_fn_retrieve_catalog_context`. Las citas `[obs-*]`, `[species-*]` y `[site-*]` se validan y persisten por separado.
 
 ## Estado actual
 

@@ -103,6 +103,7 @@ export type CopilotSource = {
   species_common_name: string;
   field_notes: string;
   similarity: number;
+  source_type?: "sighting" | "species" | "site" | "message";
 };
 
 export type CopilotAnswer = {

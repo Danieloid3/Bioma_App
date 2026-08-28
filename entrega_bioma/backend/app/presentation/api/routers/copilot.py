@@ -51,6 +51,7 @@ class CopilotSourceResponse(BaseModel):
     species_common_name: str
     field_notes: str
     similarity: float
+    source_type: str = "sighting"
 
 
 class CopilotAnswerResponse(BaseModel):
@@ -95,6 +96,7 @@ def _source_response(source: CopilotSource) -> CopilotSourceResponse:
         species_common_name=source.species_common_name,
         field_notes=source.field_notes,
         similarity=source.similarity,
+        source_type=source.source_type,
     )
 
 
@@ -245,9 +247,9 @@ async def ask(
         async with database.actor_transaction(actor.researcher_id) as connection:
             return await PostgresSightingRepository(connection).retrieve_context(embedding, limit=5)
 
-    async def retrieve_catalog() -> list[CatalogKnowledgeItem]:
+    async def retrieve_catalog(embedding: Sequence[float]) -> list[CatalogKnowledgeItem]:
         async with database.actor_transaction(actor.researcher_id) as connection:
-            return await PostgresSightingRepository(connection).get_knowledge_catalog()
+            return await PostgresSightingRepository(connection).get_knowledge_catalog(embedding)
 
     async def record_audit(**kwargs: object) -> UUID:
         async with database.actor_transaction(actor.researcher_id) as connection:

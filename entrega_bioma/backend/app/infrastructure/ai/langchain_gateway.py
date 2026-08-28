@@ -44,13 +44,13 @@ class LangChainOpenAIGateway:
             for item in catalog_knowledge:
                 if item.catalog_type == "species":
                     cat_lines.append(
-                        f"• {item.common_name} ({item.scientific_name}, UICN: {item.iucn_category}): "
+                        f"• [{item.source_reference}] {item.common_name} ({item.scientific_name}, UICN: {item.iucn_category}): "
                         f"{item.description or ''} Hábitat: {item.habitat or ''}. "
                         f"Dieta: {item.diet or ''}. Estado de conservación: {item.conservation_status or ''}."
                     )
                 elif item.catalog_type == "site":
                     cat_lines.append(
-                        f"• {item.common_name} ({item.region}, Ecosistema: {item.ecosystem or 'N/A'}): "
+                        f"• [{item.source_reference}] {item.common_name} ({item.region}, Ecosistema: {item.ecosystem or 'N/A'}): "
                         f"{item.description or ''}"
                     )
             sections.append("\n".join(cat_lines))
@@ -88,4 +88,3 @@ class LangChainOpenAIGateway:
             input_tokens=int(usage.get("input_tokens", 0)),
             output_tokens=int(usage.get("output_tokens", 0)),
         )
-

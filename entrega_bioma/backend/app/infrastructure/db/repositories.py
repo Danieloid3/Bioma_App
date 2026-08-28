@@ -145,12 +145,29 @@ class PostgresSightingRepository:
             for row in rows
         ]
 
-    async def get_knowledge_catalog(self) -> list[CatalogKnowledgeItem]:
-        rows = await self._connection.fetch("SELECT * FROM bio_fn_get_knowledge_catalog()")
-        return [
+    async def get_knowledge_catalog(self, embedding: Sequence[float]) -> list[CatalogKnowledgeItem]:
+        semantic_rows = await self._connection.fetch(
+            "SELECT * FROM bio_fn_retrieve_catalog_context($1::vector, 8)", str(list(embedding))
+        )
+        rows = await self._connection.fetch("""
+            SELECT 'species'::varchar AS catalog_type, bio_species_id AS catalog_id,
+                   'species-' || bio_species_id::text AS source_reference,
+                   bio_common_name AS common_name, bio_scientific_name AS scientific_name,
+                   bio_iucn_category AS iucn_category, NULL::varchar AS ecosystem, NULL::varchar AS region,
+                   bio_description AS description, bio_habitat AS habitat, bio_diet AS diet,
+                   bio_conservation_status AS conservation_status
+            FROM bio_species
+            UNION ALL
+            SELECT 'site', bio_site_id, 'site-' || bio_site_id::text, bio_site_name,
+                   NULL, NULL, bio_ecosystem, bio_region, bio_description, NULL, NULL, NULL
+            FROM bio_sites
+        """)
+        direct_items = [
             CatalogKnowledgeItem(
                 catalog_type=row["catalog_type"],
                 common_name=row["common_name"],
+                catalog_id=row["catalog_id"],
+                source_reference=row["source_reference"],
                 scientific_name=row.get("scientific_name"),
                 iucn_category=row.get("iucn_category"),
                 ecosystem=row.get("ecosystem"),
@@ -162,6 +179,9 @@ class PostgresSightingRepository:
             )
             for row in rows
         ]
+        by_id = {item.catalog_id: item for item in direct_items}
+        semantic_ids = [row["catalog_id"] for row in semantic_rows]
+        return [*(by_id[item_id] for item_id in semantic_ids if item_id in by_id), *(item for item in direct_items if item.catalog_id not in semantic_ids)]
 
 
     async def store_embedding(
@@ -381,7 +401,8 @@ class PostgresChatRepository:
                 name=row["bio_name"], created_at=row["bio_created_at"],
                 updated_at=row["bio_updated_at"], message_count=row["message_count"],
                 unread_count=row["unread_count"],
-                last_message_at=row["last_message_at"], display_name=row["display_name"],
+                last_message_at=row["last_message_at"], last_message_preview=row["last_message_preview"],
+                display_name=row["display_name"],
             ) for row in rows
         ]
 
@@ -540,7 +561,7 @@ class PostgresCopilotAuditRepository:
         sources: Sequence[CopilotSource],
     ) -> UUID:
         return await self._connection.fetchval(
-            "SELECT bio_fn_log_copilot_usage($1, $2, $3, $4, $5, $6, $7::uuid[], $8::numeric[])",
+            "SELECT bio_fn_log_copilot_usage($1, $2, $3, $4, $5, $6, $7::uuid[], $8::numeric[], $9::jsonb)",
             prompt,
             answer,
             system_prompt_version,
@@ -549,6 +570,10 @@ class PostgresCopilotAuditRepository:
             output_tokens,
             [source.sighting_id for source in sources if source.source_type == "sighting"],
             [source.similarity for source in sources if source.source_type == "sighting"],
+            json.dumps([
+                {"type": source.source_type, "reference": source.observation_reference, "id": str(source.sighting_id)}
+                for source in sources if source.source_type in {"species", "site"}
+            ]),
         )
 
 
@@ -593,6 +618,7 @@ class PostgresCopilotConversationRepository:
                     species_common_name=c["species_common_name"],
                     field_notes=c["field_notes"],
                     similarity=float(c["similarity"]) if c.get("similarity") is not None else 0.0,
+                    source_type=c.get("source_type", "sighting"),
                 )
                 for c in (citations_data or [])
             )

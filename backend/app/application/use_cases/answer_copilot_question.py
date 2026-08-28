@@ -26,7 +26,7 @@ Guidelines:
 - Use rich, clear Markdown formatting:
   * Highlight species names, monitored sites, and key biological terms with bold (**Oso de anteojos**, **PNN Chingaza**, **Vulnerable (VU)**).
   * Use clean bullet points (- item) when presenting traits, diet, records, or multi-part observations.
-- When referencing supplied evidence, cite every factual statement with its exact bracketed reference right after the statement, for example [obs-5001] or [msg-UUID].
+- When referencing supplied evidence, cite every factual statement with its exact bracketed reference right after the statement, for example [obs-5001], [species-UUID] or [site-UUID].
 - When asked about a species' biology, diet, habitat, or conservation status, use the official Bioma Catalog information provided in context to give an accurate, natural and complete scientific explanation.
 - Never invent coordinates or cite observation references that were not provided in context.
 - If the query cannot be answered from the provided catalog or authorized sightings, explain warmly that the information available for this conversation is not enough to confirm it. Do not guess whether a record is absent or restricted; offer a useful next step such as checking the biological catalog or trying another species, site, or date.
@@ -47,7 +47,7 @@ Guidelines:
 - Use rich, clear Markdown formatting:
   * Highlight species names, monitored sites, and key biological terms with bold (**Oso de anteojos**, **PNN Chingaza**, **Vulnerable (VU)**).
   * Use clean bullet points (- item) when presenting traits, diet, records, or multi-part observations.
-- When referencing supplied evidence, cite every factual statement with its exact bracketed reference right after the statement, for example [obs-5001] or [msg-UUID].
+- When referencing supplied evidence, cite every factual statement with its exact bracketed reference right after the statement, for example [obs-5001], [species-UUID] or [site-UUID].
 - When asked about a species' biology, diet, habitat, or conservation status, use the official Bioma Catalog information provided in context to give an accurate, natural and complete scientific explanation.
 - Never invent coordinates or cite observation references that were not provided in context.
 - If the query cannot be answered from the provided catalog or authorized sightings, state transparently and politely that no authorized data is available for that request."""
@@ -104,7 +104,7 @@ class AnswerCopilotQuestion:
     copilot: CopilotProvider
     context: Callable[[Sequence[float]], Awaitable[list[CopilotSource]]]
     audit: Callable[..., Awaitable[object]]
-    catalog: Callable[[], Awaitable[list[CatalogKnowledgeItem]]] | None = None
+    catalog: Callable[[Sequence[float]], Awaitable[list[CatalogKnowledgeItem]]] | None = None
 
     async def execute(
         self,
@@ -154,7 +154,19 @@ class AnswerCopilotQuestion:
         sources = await self.context(query_embedding)
         catalog_items: list[CatalogKnowledgeItem] = []
         if self.catalog is not None:
-            catalog_items = await self.catalog()
+            catalog_items = await self.catalog(query_embedding)
+        catalog_sources = tuple(
+            CopilotSource(
+                sighting_id=item.catalog_id,
+                observation_reference=item.source_reference or "",
+                species_common_name=item.common_name,
+                field_notes=item.description or "",
+                similarity=1.0,
+                source_type=item.catalog_type,
+            )
+            for item in catalog_items
+            if item.catalog_id is not None and item.source_reference
+        )
 
         # A channel's RLS-filtered conversation is valid context even when the
         # semantic sighting search has no matching result. Do not discard it and
@@ -171,7 +183,7 @@ class AnswerCopilotQuestion:
                 catalog_knowledge=catalog_items,
             )
 
-            cited_sources = _cited_sources(answer.text, sources)
+            cited_sources = _cited_sources(answer.text, (*sources, *catalog_sources))
             # In a chat channel, an answer may intentionally rely on the
             # conversational messages (for example, “Sofía dijo que está bien”)
             # while the semantic sighting candidates are unrelated. Only force

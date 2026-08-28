@@ -36,7 +36,7 @@ No hay borrado físico: la anulación es lógica y un trigger conserva revisione
 
 Si RLS no devuelve fuentes, el caso de uso responde una negativa determinista y transparente, sin llamar al modelo. Las notas de campo son datos no confiables, nunca instrucciones.
 
-Los embeddings se procesan en el worker independiente `app/workers/embeddings.py`. El trigger de avistamientos invalida el vector al crear o cambiar notas; el worker reclama trabajos mediante `SKIP LOCKED`.
+Los embeddings se procesan en el worker independiente `app/workers/embeddings.py`. Los avistamientos, mensajes y fichas de especies/sitios tienen colas separadas reclamadas mediante `SKIP LOCKED`; el catálogo se recupera semánticamente sin mezclarse con las tablas protegidas por RLS. Las citas de catálogo se auditan en `bio_copilot_catalog_citations`, mientras las citas de avistamiento conservan su revalidación de acreditación o autoría.
 
 ## Mensajería interna protegida
 

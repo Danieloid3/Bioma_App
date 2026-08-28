@@ -15,5 +15,6 @@ psql "$DATABASE_APP_URL" -v ON_ERROR_STOP=1 -v "hidden_sighting_id=$hidden_sight
 psql "$DATABASE_APP_URL" -v ON_ERROR_STOP=1 -f /migrations/tests/chat_counter_assertions.sql
 psql "$DATABASE_APP_URL" -v ON_ERROR_STOP=1 -f /migrations/tests/chat_membership_assertions.sql
 psql "$DATABASE_APP_URL" -v ON_ERROR_STOP=1 -f /migrations/tests/prompt_version_assertions.sql
+psql "$DATABASE_APP_URL" -v ON_ERROR_STOP=1 -f /migrations/tests/catalog_citation_assertions.sql
 psql "$DATABASE_ADMIN_URL" -v ON_ERROR_STOP=1 -f /migrations/tests/refresh_rotation_assertions.sql
 echo "RLS, RAG, chat, prompt-version and refresh-token security assertions passed."

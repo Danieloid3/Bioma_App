@@ -1,5 +1,7 @@
 # Frontend Bioma — Contexto para agentes
 
+- Las referencias del copiloto se resuelven por `source_type`: avistamientos abren su detalle y `species`/`site` abren los modales del catálogo. Nunca inferir el tipo a partir del texto visible cuando el API ya lo entrega.
+
 ## Misión
 
 El frontend es una aplicación React/TypeScript para exploración de avistamientos, copiloto y perfil. Debe ser sobrio, cálido y científico; la referencia visual es un dashboard natural con navegación lateral verde, tarjetas marfil, acentos dorados y una versión móvil clara. Este repositorio se ejecuta de forma independiente y consume el API configurado por `VITE_API_BASE_URL`.
@@ -98,7 +100,7 @@ El access token permanece solo en memoria. Al recargar, la aplicación restaura 
 - El chat sustituye polling por SSE autenticado desde `ApiClient.stream`. Los eventos solo invalidan (`type`, `channel_id`); al recibirlos, `ChatPanel` vuelve a leer canales o el historial activo mediante la API protegida. Debe conservarse la reconexión, el scroll del lector y la regla de no incluir contenido sensible en eventos.
 - Las consultas de TanStack Query del `CopilotPanel` incluyen el `researcher_id` autenticado en su clave y limpian la conversación activa al cambiar de sesión; así el caché de una cuenta nunca aparece en otra.
 - Los textos visibles y etiquetas accesibles de los modales del chat usan claves `chat.*` de i18next en español e inglés; no añadir cadenas de interfaz directamente al componente.
-- La restauración inicial de sesión comparte una única promesa a nivel de módulo: como el refresh token rota al consumirse, nunca deben ejecutarse restauraciones concurrentes aunque `App` se remonte.
-- `ChatPanel` ordena contactos y grupos por la última actividad, conserva el foco del compositor, ofrece `@copilot` al escribir `@`, muestra checks de lectura y permite gestionar integrantes o abandonar grupos mediante endpoints protegidos.
+- La restauración inicial de sesión comparte una única promesa a nivel de módulo y usa `navigator.locks` (`bioma:auth:refresh`) para serializar la rotación del refresh token entre pestañas del mismo origen. No se persiste ningún token en `localStorage`; navegadores sin Web Locks conservan la deduplicación segura por pestaña.
+- `ChatPanel` ordena contactos y grupos por la última actividad, conserva el foco del compositor, separa la lista lateral en filtros Chats/Grupos y muestra una vista previa del último mensaje autorizado (no un contador total), ofrece `@copilot` al escribir `@`, muestra checks de lectura y permite gestionar integrantes o abandonar grupos mediante endpoints protegidos.
 - Los checks de mensajes propios se basan en `delivered_count` y `read_count`: uno enviado, dos entregado y dos verdes leído; nunca se infiere ese estado con datos locales no autorizados.
 - Los estados de carga reutilizan `shared/components/BiomaLoader.tsx`, con el ave de Bioma y tres puntos animados.

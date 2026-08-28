@@ -44,7 +44,7 @@ La ficha incluye coordenadas exactas, por lo que no se deriva del listado ni se 
 
 ## Enriquecimiento del catálogo científico e inyección en RAG
 
-El baseline amplía `bio_species` y `bio_sites` con descripción científica, hábitat, dieta, bioma y estado de conservación. Este catálogo se inyecta formalmente en el contexto del copiloto a través de `bio_fn_get_knowledge_catalog()`, permitiendo que el LLM responda con rigor biológico sobre las especies y áreas protegidas de la Fundación Yarumo mientras sigue citando avistamientos reales `[obs-XXXX]` recuperados bajo RLS.
+El baseline amplía `bio_species` y `bio_sites` con descripción científica, hábitat, dieta, bioma y estado de conservación. Las migraciones `015` y `016` añaden embeddings y citas propias del catálogo: la recuperación híbrida prioriza coincidencias semánticas y mantiene el catálogo oficial como respaldo. Especies y sitios se citan como `[species-UUID]` y `[site-UUID]`; los avistamientos continúan citándose como `[obs-XXXX]` y son los únicos sujetos a la regla de acreditación/autoría RLS.
 
 ## Fichas científicas modales con degradado panorámico
 
