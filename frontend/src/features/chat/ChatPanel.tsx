@@ -797,7 +797,7 @@ export function ChatPanel({
 
           <div className={styles.headerActions}>
             {activeChannel?.channel_type === "group" && (
-              <button type="button" className={styles.settingsButton} onClick={() => void openMembers()} title="Ver integrantes">
+              <button type="button" className={styles.settingsButton} onClick={() => void openMembers()} title={t("chat.viewMembers")}>
                 <Users aria-hidden="true" />
               </button>
             )}
@@ -859,7 +859,7 @@ export function ChatPanel({
                         onClick={() =>
                           setActiveMenuMessageId(isMenuOpen ? null : message.message_id)
                         }
-                        title="Opciones de mensaje"
+                        title={t("chat.messageOptions")}
                       >
                         <MoreVertical aria-hidden="true" />
                       </button>
@@ -875,7 +875,7 @@ export function ChatPanel({
                             }}
                           >
                             <Pencil aria-hidden="true" />
-                            <span>Editar</span>
+                            <span>{t("chat.editMessage")}</span>
                           </button>
                           <button
                             type="button"
@@ -883,7 +883,7 @@ export function ChatPanel({
                             onClick={() => void submitDeleteMessage(message.message_id)}
                           >
                             <Trash2 aria-hidden="true" />
-                            <span>Eliminar</span>
+                            <span>{t("chat.deleteMessage")}</span>
                           </button>
                         </div>
                       )}
@@ -906,7 +906,7 @@ export function ChatPanel({
                   {message.is_deleted ? (
                     <p className={styles.deletedText}>
                       <Ban aria-hidden="true" />
-                      <span>Este mensaje fue eliminado</span>
+                      <span>{t("chat.deletedMessage")}</span>
                     </p>
                   ) : isEditingThis ? (
                     /* 2. Modo editor inline */
@@ -976,9 +976,9 @@ export function ChatPanel({
                   <div className={styles.bubbleMeta}>
                     {/* Indicador de editado con lápiz (estilo WhatsApp) */}
                     {message.is_edited && !message.is_deleted && (
-                      <span className={styles.editedTag} title="Mensaje editado">
+                      <span className={styles.editedTag} title={t("chat.editedMessage")}>
                         <Pencil aria-hidden="true" />
-                        <span>Editado</span>
+                        <span>{t("chat.editedMessage")}</span>
                       </span>
                     )}
 
@@ -1017,7 +1017,7 @@ export function ChatPanel({
               <div className={styles.bubble}>
                 <div className={styles.bubbleAuthor}>
                   <Sparkles aria-hidden="true" />
-                  <span>Copiloto Bioma</span>
+                  <span>{t("chat.copilotName")}</span>
                 </div>
                 <div className={styles.typing}>
                   <i />
@@ -1123,10 +1123,10 @@ export function ChatPanel({
 
               <div className={styles.statCard}>
                 <ShieldCheck aria-hidden="true" />
-                <span className={styles.statValue} style={{ fontSize: "1rem" }}>
-                  Nivel {researcher.accreditation_level}
+                  <span className={styles.statValue} style={{ fontSize: "1rem" }}>
+                  {t("chat.level", { level: researcher.accreditation_level })}
                 </span>
-                <span className={styles.statLabel}>Nivel de acceso</span>
+                <span className={styles.statLabel}>{t("chat.accessLevel")}</span>
               </div>
             </div>
 
@@ -1141,9 +1141,9 @@ export function ChatPanel({
 
       {showMembersModal && (
         <div className={styles.modalOverlay} onClick={() => setShowMembersModal(false)}>
-          <div className={styles.membersModal} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Integrantes del grupo">
+          <div className={styles.membersModal} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label={t("chat.groupMembersTitle")}>
             <div className={styles.modalHeader}>
-              <div><h3>Integrantes del grupo</h3><p>{channelMembers.length} investigadores activos</p></div>
+              <div><h3>{t("chat.groupMembersTitle")}</h3><p>{t("chat.activeResearchers", { count: channelMembers.length })}</p></div>
               <button type="button" className={styles.closeButton} onClick={() => setShowMembersModal(false)}><X aria-hidden="true" /></button>
             </div>
             <div className={styles.groupMembersList}>
@@ -1151,7 +1151,7 @@ export function ChatPanel({
                 <div className={styles.groupMemberRow} key={member.researcher_id}>
                   <AnimalAvatar avatarKey={member.animal_avatar_key} seed={member.researcher_id} />
                   <div><strong>{member.full_name}</strong><span>{member.role_title}</span></div>
-                  <small>Nivel {member.accreditation_level}</small>
+                  <small>{t("chat.level", { level: member.accreditation_level })}</small>
                 </div>
               ))}
             </div>
@@ -1225,7 +1225,7 @@ export function ChatPanel({
                   <input
                     type="text"
                     className={styles.memberSearchInput}
-                    placeholder="Buscar colega por nombre o cargo…"
+                  placeholder={t("chat.searchColleague")}
                     value={groupMemberSearch}
                     onChange={(e) => setGroupMemberSearch(e.target.value)}
                   />
@@ -1247,7 +1247,7 @@ export function ChatPanel({
                             checked={isSelected}
                             onChange={() => {}}
                             className={styles.customCheckbox}
-                            aria-label={`Seleccionar ${contact.full_name}`}
+                            aria-label={t("chat.selectResearcher", { name: contact.full_name })}
                           />
                         </div>
                         <AnimalAvatar
@@ -1258,8 +1258,8 @@ export function ChatPanel({
                           <span className={styles.memberSelectName}>{contact.full_name}</span>
                           <span className={styles.memberSelectRole}>{contact.role_title}</span>
                         </div>
-                        <span className={styles.memberLevelBadge}>
-                          Nivel {contact.accreditation_level}
+                          <span className={styles.memberLevelBadge}>
+                            {t("chat.level", { level: contact.accreditation_level })}
                         </span>
                       </div>
                     );
