@@ -228,3 +228,21 @@ async def test_catalog_citation_is_validated_and_returned_as_its_own_source_type
     assert len(answer.sources) == 1
     assert answer.sources[0].source_type == "species"
     assert answer.sources[0].sighting_id == catalog_id
+
+
+async def test_catalog_answer_falls_back_to_verifiable_database_text_when_model_omits_citation() -> None:
+    catalog_id = UUID("80000000-0000-0000-0000-000000000016")
+
+    class UncitedCatalogCopilot:
+        async def answer(self, **_: object) -> CopilotAnswer:
+            return CopilotAnswer("El jaguar es un felino.", (), "fake", 2, 3)
+
+    async def context(_: list[float]) -> list[CopilotSource]: return []
+    async def catalog(_: list[float]) -> list[CatalogKnowledgeItem]:
+        return [CatalogKnowledgeItem(catalog_type="species", catalog_id=catalog_id, source_reference=f"species-{catalog_id}", common_name="Jaguar", description="Felino silvestre")]
+    async def audit(**_: object) -> object: return UUID("80000000-0000-0000-0000-000000000017")
+
+    answer = await AnswerCopilotQuestion(embeddings=FakeEmbeddings(), copilot=UncitedCatalogCopilot(), context=context, audit=audit, catalog=catalog).execute(actor=actor(), question="Háblame del jaguar")
+    assert answer.model_name == "bioma-catalog-policy"
+    assert f"[species-{catalog_id}]" in answer.text
+    assert answer.sources[0].source_type == "species"

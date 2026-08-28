@@ -98,6 +98,34 @@ def _cited_sources(text: str, authorized_sources: Sequence[CopilotSource]) -> tu
     return tuple(cited)
 
 
+def _catalog_fallback(question: str, items: Sequence[CatalogKnowledgeItem]) -> tuple[str, CopilotSource] | None:
+    """Build a verifiable answer from one official catalogue row when the model omits its citation."""
+    usable = [item for item in items if item.catalog_id and item.source_reference]
+    if not usable:
+        return None
+    folded_question = question.casefold()
+    item = next(
+        (
+            candidate
+            for candidate in usable
+            if candidate.common_name.casefold() in folded_question
+            or bool(candidate.scientific_name and candidate.scientific_name.casefold() in folded_question)
+        ),
+        usable[0],
+    )
+    details = [item.description, item.habitat, item.diet, item.conservation_status]
+    body = " ".join(part.strip() for part in details if part and part.strip())
+    text = f"Encontré la ficha oficial de **{item.common_name}**. {body} [{item.source_reference}]".strip()
+    return text, CopilotSource(
+        sighting_id=item.catalog_id,
+        observation_reference=item.source_reference or "",
+        species_common_name=item.common_name,
+        field_notes=item.description or "",
+        similarity=1.0,
+        source_type=item.catalog_type,
+    )
+
+
 @dataclass(slots=True)
 class AnswerCopilotQuestion:
     embeddings: EmbeddingProvider
@@ -189,7 +217,17 @@ class AnswerCopilotQuestion:
             # while the semantic sighting candidates are unrelated. Only force
             # the deterministic citation fallback when no authorized history
             # was available at all.
-            if sources and not cited_sources and not history:
+            catalog_fallback = _catalog_fallback(clean_question, catalog_items)
+            if not cited_sources and catalog_fallback is not None and not history:
+                fallback_text, fallback_source = catalog_fallback
+                final_answer = CopilotAnswer(
+                    text=fallback_text,
+                    sources=(fallback_source,),
+                    model_name="bioma-catalog-policy",
+                    input_tokens=answer.input_tokens,
+                    output_tokens=answer.output_tokens,
+                )
+            elif sources and not cited_sources and not history:
                 final_answer = CopilotAnswer(
                     text=NO_CITED_SOURCES_RESPONSE,
                     sources=(),
