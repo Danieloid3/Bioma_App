@@ -27,7 +27,7 @@ class ChatEvent:
             raw = json.loads(value)
             event_type = raw["type"]
             channel_id = UUID(raw["channel_id"])
-            if event_type not in {"channel.created", "message.created", "message.updated", "message.deleted"}:
+            if event_type not in {"channel.created", "channel.updated", "message.created", "message.updated", "message.deleted", "message.read"}:
                 return None
             return cls(type=event_type, channel_id=channel_id)
         except (KeyError, TypeError, ValueError, json.JSONDecodeError):

@@ -99,3 +99,4 @@ El access token permanece solo en memoria. Al recargar, la aplicación restaura 
 - Las consultas de TanStack Query del `CopilotPanel` incluyen el `researcher_id` autenticado en su clave y limpian la conversación activa al cambiar de sesión; así el caché de una cuenta nunca aparece en otra.
 - Los textos visibles y etiquetas accesibles de los modales del chat usan claves `chat.*` de i18next en español e inglés; no añadir cadenas de interfaz directamente al componente.
 - La restauración inicial de sesión comparte una única promesa a nivel de módulo: como el refresh token rota al consumirse, nunca deben ejecutarse restauraciones concurrentes aunque `App` se remonte.
+- `ChatPanel` ordena contactos y grupos por la última actividad, conserva el foco del compositor, ofrece `@copilot` al escribir `@`, muestra checks de lectura y permite gestionar integrantes o abandonar grupos mediante endpoints protegidos.

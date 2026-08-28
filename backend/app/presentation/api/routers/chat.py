@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -38,6 +38,10 @@ class CreateChannelRequest(BaseModel):
 
 class SendMessageRequest(BaseModel):
     message_text: str = Field(min_length=1, max_length=4000)
+
+
+class AddMembersRequest(BaseModel):
+    member_ids: list[UUID] = Field(min_length=1, max_length=100)
 
 
 class ChannelResponse(BaseModel):
@@ -160,9 +164,15 @@ async def create_channel(
 
 
 @router.get("/channels/{channel_id}/messages", response_model=list[MessageResponse], responses=COMMON_ERROR_RESPONSES)
-async def history(channel_id: UUID, actor: ActorDependency, database: DatabaseDependency, cursor_created_at: datetime | None = None, cursor_message_id: UUID | None = None, limit: int = Query(default=50, ge=1, le=100)) -> list[MessageResponse]:
+async def history(channel_id: UUID, actor: ActorDependency, database: DatabaseDependency, rate_limiter: RateLimiterDependency, cursor_created_at: datetime | None = None, cursor_message_id: UUID | None = None, limit: int = Query(default=50, ge=1, le=100)) -> list[MessageResponse]:
     async with database.actor_transaction(actor.researcher_id) as connection:
-        items = await PostgresChatRepository(connection).history(channel_id, cursor_created_at, cursor_message_id, limit)
+        repository = PostgresChatRepository(connection)
+        pending_count = await repository.mark_channel_read(channel_id)
+        items = await repository.history(channel_id, cursor_created_at, cursor_message_id, limit)
+    # Opening a channel marks this actor's pending receipts as read. The event
+    # carries no content; other members refresh through their RLS-protected API.
+    if pending_count:
+        await RedisChatEventPublisher(rate_limiter.client).publish("message.read", channel_id)
     return [_message(item) for item in items]
 
 
@@ -171,6 +181,33 @@ async def channel_members(channel_id: UUID, actor: ActorDependency, database: Da
     async with database.actor_transaction(actor.researcher_id) as connection:
         items = await PostgresChatRepository(connection).members(channel_id)
     return [ChannelMemberResponse(**asdict(item)) for item in items]
+
+
+@router.post("/channels/{channel_id}/members", status_code=status.HTTP_204_NO_CONTENT, responses=COMMON_ERROR_RESPONSES)
+async def add_channel_members(
+    channel_id: UUID,
+    payload: AddMembersRequest,
+    actor: ActorDependency,
+    database: DatabaseDependency,
+    rate_limiter: RateLimiterDependency,
+) -> Response:
+    async with database.actor_transaction(actor.researcher_id) as connection:
+        await PostgresChatRepository(connection).add_members(channel_id, payload.member_ids)
+    await RedisChatEventPublisher(rate_limiter.client).publish("channel.updated", channel_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/channels/{channel_id}/leave", status_code=status.HTTP_204_NO_CONTENT, responses=COMMON_ERROR_RESPONSES)
+async def leave_channel(
+    channel_id: UUID,
+    actor: ActorDependency,
+    database: DatabaseDependency,
+    rate_limiter: RateLimiterDependency,
+) -> Response:
+    async with database.actor_transaction(actor.researcher_id) as connection:
+        await PostgresChatRepository(connection).leave(channel_id)
+    await RedisChatEventPublisher(rate_limiter.client).publish("channel.updated", channel_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/channels/{channel_id}/messages", response_model=MessageResponse, status_code=status.HTTP_201_CREATED, responses=COMMON_ERROR_RESPONSES)
