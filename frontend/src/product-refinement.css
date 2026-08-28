@@ -116,10 +116,16 @@
   }
 
   .view-admin .admin-prompt-editor textarea {
-    min-height: 4.5rem;
-    height: 5.5rem;
-    max-height: 8rem;
+    min-height: 8rem;
+    height: 12rem;
+    max-height: 18rem;
     resize: vertical;
+    font-size: .88rem;
+    line-height: 1.55;
+    padding: .85rem 1rem;
+    border-radius: .85rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--sage-pale) transparent;
   }
 
   .view-admin .admin-prompt-history {
