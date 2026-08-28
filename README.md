@@ -11,7 +11,7 @@ Plataforma de monitoreo de fauna silvestre de la Fundación Yarumo. La seguridad
 
 El servicio `migrator` lleva un registro con checksum de cada migración. No se deben editar migraciones ya aplicadas: se agrega una nueva.
 
-El baseline canónico se compone de `001_core_schema.sql`, `002_functions_and_triggers.sql` y `003_seed_data.sql`. Las migraciones `004`–`011` son reparaciones hacia adelante para el worker, la persistencia/auditoría del copiloto, el historial/citas, contador y no leídos del chat, la rotación de refresh tokens, la consulta de integrantes de grupos y los prompts versionados; deben aplicarse también en instalaciones existentes. Los prompts activos se resuelven en PostgreSQL y cada uso queda auditado con su versión.
+El baseline canónico se compone de `001_core_schema.sql`, `002_functions_and_triggers.sql` y `003_seed_data.sql`. Las migraciones `004`–`014` son reparaciones hacia adelante para el worker, la persistencia/auditoría del copiloto, el historial/citas, contador, recibos y vista previa del último mensaje del chat, la rotación de refresh tokens, la gestión de integrantes y los prompts versionados; deben aplicarse también en instalaciones existentes. Los prompts activos se resuelven en PostgreSQL y cada uso queda auditado con su versión.
 
 ## Inicio local
 

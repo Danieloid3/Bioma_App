@@ -381,7 +381,8 @@ class PostgresChatRepository:
                 name=row["bio_name"], created_at=row["bio_created_at"],
                 updated_at=row["bio_updated_at"], message_count=row["message_count"],
                 unread_count=row["unread_count"],
-                last_message_at=row["last_message_at"], display_name=row["display_name"],
+                last_message_at=row["last_message_at"], last_message_preview=row["last_message_preview"],
+                display_name=row["display_name"],
             ) for row in rows
         ]
 

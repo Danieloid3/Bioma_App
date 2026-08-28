@@ -53,6 +53,7 @@ class ChannelResponse(BaseModel):
     message_count: int
     unread_count: int
     last_message_at: datetime | None
+    last_message_preview: str | None
     display_name: str
 
 

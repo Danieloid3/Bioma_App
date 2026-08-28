@@ -151,3 +151,15 @@ export type CopilotUsageItem = {
 
 export type CopilotUsageResponse = { item: CopilotUsageItem | null };
 
+export type ChatChannel = {
+  channel_id: string;
+  channel_type: "direct" | "group";
+  name: string | null;
+  display_name: string;
+  message_count: number;
+  unread_count: number;
+  last_message_at: string | null;
+  last_message_preview: string | null;
+  created_at: string;
+  updated_at: string;
+};

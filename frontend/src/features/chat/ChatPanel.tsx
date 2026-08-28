@@ -27,7 +27,7 @@ import {
 
 import { useQuery } from "@tanstack/react-query";
 
-import type { CopilotUsageResponse, Researcher } from "../../domain/contracts";
+import type { ChatChannel, CopilotUsageResponse, Researcher } from "../../domain/contracts";
 import { ApiClient } from "../../shared/api/client";
 import { AnimalAvatar } from "../../shared/components/AnimalAvatar";
 import styles from "./ChatPanel.module.css";
@@ -39,17 +39,7 @@ type Citation = {
   label?: string;
 };
 
-type Channel = {
-  channel_id: string;
-  channel_type: "direct" | "group";
-  name: string | null;
-  display_name: string;
-  message_count: number;
-  unread_count: number;
-  last_message_at: string | null;
-  created_at: string;
-  updated_at: string;
-};
+type SidebarFilter = "chats" | "groups";
 
 type Message = {
   message_id: string;
@@ -278,12 +268,13 @@ export function ChatPanel({
   onOpenSighting?: (sightingId: string) => void;
 }) {
   const { t } = useTranslation();
-  const [channels, setChannels] = useState<Channel[]>([]);
+  const [channels, setChannels] = useState<ChatChannel[]>([]);
   const [contacts, setContacts] = useState<Researcher[]>([]);
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [sidebarFilter, setSidebarFilter] = useState<SidebarFilter>("chats");
   const [isSending, setIsSending] = useState(false);
   const [isCopilotThinking, setIsCopilotThinking] = useState(false);
   const [showUsageModal, setShowUsageModal] = useState(false);
@@ -311,7 +302,7 @@ export function ChatPanel({
   const showCopilotSuggestion = draft.trim() === "@";
 
   const refreshChannels = useCallback(async () => {
-    const channelsData = await api.get<Channel[]>("/v1/chat/channels");
+    const channelsData = await api.get<ChatChannel[]>("/v1/chat/channels");
     setChannels(channelsData);
     setActiveChannelId((current) => current ?? channelsData[0]?.channel_id ?? null);
   }, [api]);
@@ -379,7 +370,7 @@ export function ChatPanel({
     async function loadInitialData() {
       try {
         const [channelsData, directoryData] = await Promise.all([
-          api.get<Channel[]>("/v1/chat/channels"),
+          api.get<ChatChannel[]>("/v1/chat/channels"),
           api.get<DirectoryResponse>("/v1/researchers"),
         ]);
         if (!isMounted) return;
@@ -522,6 +513,12 @@ export function ChatPanel({
     );
   }, [channels, searchQuery]);
 
+  const directChannelsByContactName = useMemo(() => new Map(
+    channels
+      .filter((channel) => channel.channel_type === "direct")
+      .map((channel) => [channel.display_name.toLocaleLowerCase(), channel]),
+  ), [channels]);
+
   // Filtrado de investigadores dentro del modal de nuevo grupo
   const filteredGroupContacts = useMemo(() => {
     if (!groupMemberSearch.trim()) return contacts;
@@ -549,7 +546,7 @@ export function ChatPanel({
     setIsCreatingGroup(true);
     setError(null);
     try {
-      const channel = await api.post<Channel>("/v1/chat/channels", {
+      const channel = await api.post<ChatChannel>("/v1/chat/channels", {
         channel_type: "group",
         name: name,
         member_ids: selectedGroupMemberIds,
@@ -576,7 +573,7 @@ export function ChatPanel({
 
     try {
       setError(null);
-      const channel = await api.post<Channel>("/v1/chat/channels", {
+      const channel = await api.post<ChatChannel>("/v1/chat/channels", {
         channel_type: "direct",
         member_ids: [contact.researcher_id],
       });
@@ -729,16 +726,41 @@ export function ChatPanel({
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+          <div className={styles.sidebarFilters} role="tablist" aria-label={t("chat.sidebarFilters")}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={sidebarFilter === "chats"}
+              className={`${styles.sidebarFilter} ${sidebarFilter === "chats" ? styles.sidebarFilterActive : ""}`}
+              onClick={() => setSidebarFilter("chats")}
+            >
+              <MessageCircle aria-hidden="true" />
+              {t("chat.chats")}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={sidebarFilter === "groups"}
+              className={`${styles.sidebarFilter} ${sidebarFilter === "groups" ? styles.sidebarFilterActive : ""}`}
+              onClick={() => setSidebarFilter("groups")}
+            >
+              <Users aria-hidden="true" />
+              {t("chat.groups")}
+            </button>
+          </div>
         </div>
 
         <div className={styles.contactsList}>
-          {/* Sección de Investigadores */}
-          <div className={styles.sectionLabel}>{t("chat.researchers")}</div>
+          {sidebarFilter === "chats" && <>
+          <div className={styles.sectionLabel}>{t("chat.chats")}</div>
           {filteredContacts.map((contact) => {
             const isContactActive =
               activeChannel?.channel_type === "direct" &&
               activeChannel.display_name.toLowerCase() ===
                 contact.full_name.toLowerCase();
+            const directChannel = directChannelsByContactName.get(contact.full_name.toLocaleLowerCase());
+            const preview = directChannel?.last_message_preview ||
+              (directChannel ? t("chat.noMessagesYet") : contact.role_title);
 
             return (
               <button
@@ -755,15 +777,19 @@ export function ChatPanel({
                 />
                 <div className={styles.contactInfo}>
                   <span className={styles.contactName}>{contact.full_name}</span>
-                  <span className={styles.contactRole}>{contact.role_title}</span>
+                  <span className={styles.contactRole}>{preview}</span>
                 </div>
+                {directChannel && directChannel.unread_count > 0 && (
+                  <span className={styles.messageBadge}>{directChannel.unread_count}</span>
+                )}
               </button>
             );
           })}
+          </>}
 
-          {/* Sección de Canales de Campo */}
+          {sidebarFilter === "groups" && <>
           <div className={styles.sectionHeaderRow}>
-            <div className={styles.sectionLabel}>{t("chat.channels")}</div>
+            <div className={styles.sectionLabel}>{t("chat.groups")}</div>
             <button
               type="button"
               className={styles.createGroupBtn}
@@ -792,7 +818,7 @@ export function ChatPanel({
                   {channel.display_name}
                 </span>
                 <span className={styles.contactRole}>
-                  {channel.message_count} {channel.message_count === 1 ? "mensaje" : "mensajes"}
+                  {channel.last_message_preview || t("chat.noMessagesYet")}
                 </span>
               </div>
               {channel.unread_count > 0 && (
@@ -802,6 +828,10 @@ export function ChatPanel({
               )}
             </button>
           ))}
+          {filteredChannels.filter((channel) => channel.channel_type === "group").length === 0 && (
+            <p className={styles.emptySidebarState}>{t("chat.emptyChannels")}</p>
+          )}
+          </>}
 
         </div>
       </aside>
@@ -1217,8 +1247,13 @@ export function ChatPanel({
             <div className={styles.groupMembersList}>
               {channelMembers.map((member) => (
                 <div className={styles.groupMemberRow} key={member.researcher_id}>
-                  <AnimalAvatar avatarKey={member.animal_avatar_key} seed={member.researcher_id} />
-                  <div><strong>{member.full_name}</strong><span>{member.role_title}</span></div>
+                  <div className={styles.memberAvatar}>
+                    <AnimalAvatar avatarKey={member.animal_avatar_key} seed={member.researcher_id} />
+                  </div>
+                  <div className={styles.memberDetails}>
+                    <strong>{member.full_name}</strong>
+                    <span>{member.role_title}</span>
+                  </div>
                   <small>{t("chat.level", { level: member.accreditation_level })}</small>
                 </div>
               ))}
