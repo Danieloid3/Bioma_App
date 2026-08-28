@@ -12,7 +12,6 @@ from urllib.request import Request, urlopen
 
 import pytest
 
-
 API_URL = os.getenv("BIOMA_API_URL")
 
 
@@ -21,7 +20,7 @@ def _json_request(url: str, *, method: str, payload: dict, token: str | None = N
     if token:
         headers["Authorization"] = f"Bearer {token}"
     request = Request(url, method=method, headers=headers, data=json.dumps(payload).encode())
-    with urlopen(request, timeout=30) as response:  # noqa: S310 - URL is an explicit test target
+    with urlopen(request, timeout=30) as response:
         return json.loads(response.read())
 
 
