@@ -293,6 +293,7 @@ export function ChatPanel({
   const [groupMemberSearch, setGroupMemberSearch] = useState("");
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [selectedAdditionalMemberIds, setSelectedAdditionalMemberIds] = useState<string[]>([]);
+  const [additionalMemberSearch, setAdditionalMemberSearch] = useState("");
 
 
   const transcriptEndRef = useRef<HTMLDivElement>(null);
@@ -337,6 +338,7 @@ export function ChatPanel({
     try {
       await api.post(`/v1/chat/channels/${activeChannelId}/members`, { member_ids: selectedAdditionalMemberIds });
       setSelectedAdditionalMemberIds([]);
+      setAdditionalMemberSearch("");
       setShowAddMembersModal(false);
       await openMembers();
     } catch { setError(t("errors.network")); }
@@ -529,6 +531,14 @@ export function ChatPanel({
         c.role_title.toLowerCase().includes(q)
     );
   }, [contacts, groupMemberSearch]);
+
+  const availableAdditionalMembers = useMemo(() => {
+    const query = additionalMemberSearch.trim().toLocaleLowerCase();
+    return contacts.filter((contact) => {
+      const alreadyInGroup = channelMembers.some((member) => member.researcher_id === contact.researcher_id);
+      return !alreadyInGroup && (!query || contact.full_name.toLocaleLowerCase().includes(query) || contact.role_title.toLocaleLowerCase().includes(query));
+    });
+  }, [additionalMemberSearch, channelMembers, contacts]);
 
   function toggleGroupMember(memberId: string) {
     setSelectedGroupMemberIds((prev) =>
@@ -1264,17 +1274,28 @@ export function ChatPanel({
 
       {showAddMembersModal && activeChannelId && (
         <div className={styles.modalOverlay} onClick={() => setShowAddMembersModal(false)}>
-          <div className={styles.createGroupCard} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
-            <div className={styles.modalHeader}><h3>{t("chat.addMembers")}</h3><button type="button" className={styles.closeButton} onClick={() => setShowAddMembersModal(false)}><X aria-hidden="true" /></button></div>
-            <div className={styles.memberSelectorList}>
-              {contacts.filter((contact) => !channelMembers.some((member) => member.researcher_id === contact.researcher_id)).map((contact) => {
+          <div className={styles.addMembersModal} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label={t("chat.addMembers")}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalTitleRow}>
+                <div className={styles.modalIconWrap}><UserPlus aria-hidden="true" /></div>
+                <div><h3 className={styles.modalTitleText}>{t("chat.addMembers")}</h3><p className={styles.modalSubtitleText}>{t("chat.membersCount", { count: selectedAdditionalMemberIds.length })}</p></div>
+              </div>
+              <button type="button" className={styles.closeButton} onClick={() => setShowAddMembersModal(false)} aria-label={t("common.close")}><X aria-hidden="true" /></button>
+            </div>
+            <div className={styles.memberSearchBox}>
+              <Search aria-hidden="true" />
+              <input type="search" className={styles.memberSearchInput} placeholder={t("chat.searchColleague")} value={additionalMemberSearch} onChange={(event) => setAdditionalMemberSearch(event.target.value)} autoFocus />
+            </div>
+            <div className={`${styles.memberSelectorList} ${styles.addMembersList}`}>
+              {availableAdditionalMembers.map((contact) => {
                 const selected = selectedAdditionalMemberIds.includes(contact.researcher_id);
-                return <button type="button" key={contact.researcher_id} className={`${styles.memberSelectItem} ${selected ? styles.selected : ""}`} onClick={() => setSelectedAdditionalMemberIds((ids) => selected ? ids.filter((id) => id !== contact.researcher_id) : [...ids, contact.researcher_id])}>
-                  <AnimalAvatar avatarKey={contact.animal_avatar_key} seed={contact.researcher_id} /><span className={styles.memberSelectInfo}><span className={styles.memberSelectName}>{contact.full_name}</span><span className={styles.memberSelectRole}>{contact.role_title}</span></span>{selected && <Check aria-hidden="true" />}
+                return <button type="button" key={contact.researcher_id} className={`${styles.memberSelectItem} ${selected ? styles.selected : ""}`} onClick={() => setSelectedAdditionalMemberIds((ids) => selected ? ids.filter((id) => id !== contact.researcher_id) : [...ids, contact.researcher_id])} aria-pressed={selected}>
+                  <AnimalAvatar avatarKey={contact.animal_avatar_key} seed={contact.researcher_id} /><span className={styles.memberSelectInfo}><span className={styles.memberSelectName}>{contact.full_name}</span><span className={styles.memberSelectRole}>{contact.role_title}</span></span><span className={styles.memberLevelBadge}>{t("chat.level", { level: contact.accreditation_level })}</span>{selected && <span className={styles.memberSelectedCheck}><Check aria-hidden="true" /></span>}
                 </button>;
               })}
+              {availableAdditionalMembers.length === 0 && <p className={styles.emptyMemberSearch}>{t("chat.noMembersFound")}</p>}
             </div>
-            <div className={styles.modalActions}><button type="button" className={styles.cancelBtn} onClick={() => setShowAddMembersModal(false)}>{t("common.cancel")}</button><button type="button" className={styles.createBtn} disabled={!selectedAdditionalMemberIds.length} onClick={() => void addMembers()}>{t("chat.addMembers")}</button></div>
+            <div className={styles.modalActions}><button type="button" className={styles.cancelBtn} onClick={() => setShowAddMembersModal(false)}>{t("common.cancel")}</button><button type="button" className={styles.submitBtn} disabled={!selectedAdditionalMemberIds.length} onClick={() => void addMembers()}><UserPlus aria-hidden="true" />{t("chat.addMembers")}</button></div>
           </div>
         </div>
       )}

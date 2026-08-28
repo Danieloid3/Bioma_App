@@ -317,6 +317,30 @@
   padding: 1.45rem;
 }
 
+.addMembersModal {
+  width: min(94vw, 37rem);
+  max-height: min(82vh, 42rem);
+  display: flex;
+  flex-direction: column;
+  gap: .85rem;
+  padding: 1.4rem;
+  overflow: hidden;
+  border: 1px solid #ddd6bd;
+  border-radius: 1.5rem;
+  background: linear-gradient(145deg, #fffefa 0%, #f5f3e9 100%);
+  box-shadow: 0 26px 70px #24301c38;
+}
+
+.addMembersModal .modalHeader { padding-bottom: .95rem; border-bottom: 1px solid #e9e2cf; }
+.addMembersModal .modalTitleText { margin: 0; }
+.addMembersModal .modalSubtitleText { margin: .18rem 0 0; }
+.addMembersModal .memberSearchBox { margin: 0; }
+.addMembersList { max-height: min(47vh, 22rem); padding: .2rem; overflow-y: auto; }
+.addMembersList .memberSelectItem { min-height: 4.25rem; text-align: left; }
+.memberSelectedCheck { display: grid; width: 1.35rem; height: 1.35rem; place-items: center; flex: none; border-radius: 50%; background: #566b42; color: #fff; }
+.memberSelectedCheck svg { width: .85rem; height: .85rem; }
+.emptyMemberSearch { margin: .7rem 0; padding: 1.2rem; border: 1px dashed #d6d0b9; border-radius: .85rem; color: var(--muted); text-align: center; font: 500 .82rem Inter, sans-serif; }
+
 .membersModal .modalHeader {
   align-items: flex-start;
   gap: 1rem;
