@@ -264,6 +264,9 @@
 
 .headerActions { display: flex; align-items: center; gap: .45rem; }
 .membersModal { width: min(92vw, 28rem); max-height: min(78vh, 36rem); overflow: auto; background: #fffdf8; border: 1px solid var(--line); border-radius: 1rem; box-shadow: 0 20px 48px #3f472b33; padding: 1.1rem; }
+.memberModalActions { display: flex; align-items: center; gap: .35rem; }
+.memberModalActions button { display: inline-flex; align-items: center; gap: .25rem; font-size: .72rem; }
+.memberModalActions svg { width: .85rem; height: .85rem; }
 .groupMembersList { display: grid; gap: .55rem; margin-top: .9rem; }
 .groupMemberRow { display: flex; align-items: center; gap: .65rem; padding: .6rem; border: 1px solid var(--line); border-radius: .75rem; background: #f7f8f0; }
 .groupMemberRow > div { min-width: 0; display: grid; gap: .08rem; flex: 1; }
@@ -404,6 +407,8 @@
   height: .7rem;
 }
 
+.readReceipt { color: var(--sage); }
+
 /* Citas del Copiloto en el Chat */
 .citations {
   margin-top: .85rem;
@@ -509,6 +514,31 @@
   line-height: 1.45;
   padding: .35rem 0;
 }
+
+.mentionSuggestion {
+  position: absolute;
+  left: .75rem;
+  bottom: calc(100% + .45rem);
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .55rem .7rem;
+  border: 1px solid #c7d09d;
+  border-radius: .7rem;
+  background: #f6f8e9;
+  color: var(--brown-deep);
+  box-shadow: 0 8px 20px #5a4b3020;
+  text-align: left;
+  cursor: pointer;
+  z-index: 20;
+}
+
+.mentionSuggestion:hover,
+.mentionSuggestion:focus-visible { background: #e6ebc9; }
+.mentionSuggestion > svg { width: 1rem; height: 1rem; color: #8c6418; }
+.mentionSuggestion span { display: grid; gap: .15rem; }
+.mentionSuggestion strong { color: #566238; }
+.mentionSuggestion small { color: var(--muted); font-size: .68rem; }
 
 .sendButton {
   display: inline-flex;

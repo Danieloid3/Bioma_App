@@ -74,7 +74,7 @@ type DirectoryResponse = {
 type ChannelMember = Researcher;
 
 type ChatRealtimeEvent = {
-  type: "channel.created" | "message.created" | "message.updated" | "message.deleted";
+  type: "channel.created" | "channel.updated" | "message.created" | "message.updated" | "message.deleted" | "message.read";
   channel_id: string;
 };
 
@@ -287,6 +287,7 @@ export function ChatPanel({
   const [isCopilotThinking, setIsCopilotThinking] = useState(false);
   const [showUsageModal, setShowUsageModal] = useState(false);
   const [showMembersModal, setShowMembersModal] = useState(false);
+  const [showAddMembersModal, setShowAddMembersModal] = useState(false);
   const [channelMembers, setChannelMembers] = useState<ChannelMember[]>([]);
   const [activeMenuMessageId, setActiveMenuMessageId] = useState<string | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -299,12 +300,14 @@ export function ChatPanel({
   const [selectedGroupMemberIds, setSelectedGroupMemberIds] = useState<string[]>([]);
   const [groupMemberSearch, setGroupMemberSearch] = useState("");
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+  const [selectedAdditionalMemberIds, setSelectedAdditionalMemberIds] = useState<string[]>([]);
 
 
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
   const shouldStickToBottomRef = useRef(true);
+  const showCopilotSuggestion = draft.trim() === "@";
 
   const refreshChannels = useCallback(async () => {
     const channelsData = await api.get<Channel[]>("/v1/chat/channels");
@@ -335,6 +338,28 @@ export function ChatPanel({
     } catch {
       setError(t("errors.network"));
     }
+  }
+
+  async function addMembers() {
+    if (!activeChannelId || selectedAdditionalMemberIds.length === 0) return;
+    try {
+      await api.post(`/v1/chat/channels/${activeChannelId}/members`, { member_ids: selectedAdditionalMemberIds });
+      setSelectedAdditionalMemberIds([]);
+      setShowAddMembersModal(false);
+      await openMembers();
+    } catch { setError(t("errors.network")); }
+  }
+
+  async function leaveActiveGroup() {
+    if (!activeChannelId || activeChannel?.channel_type !== "group") return;
+    if (!window.confirm(t("chat.leaveGroupConfirm"))) return;
+    try {
+      await api.post(`/v1/chat/channels/${activeChannelId}/leave`);
+      setShowMembersModal(false);
+      setActiveChannelId(null);
+      setMessages([]);
+      await refreshChannels();
+    } catch { setError(t("errors.network")); }
   }
 
   // Cerrar menú de opciones al hacer click afuera
@@ -414,7 +439,7 @@ export function ChatPanel({
         await api.stream("/v1/chat/events", (event) => {
           if (event.event !== "chat") return;
           const change = JSON.parse(event.data) as ChatRealtimeEvent;
-          if (change.type === "channel.created") {
+          if (change.type === "channel.created" || change.type === "channel.updated") {
             void refreshChannels();
             return;
           }
@@ -466,19 +491,32 @@ export function ChatPanel({
 
   // Filtrado de contactos y canales por búsqueda
   const filteredContacts = useMemo(() => {
-    if (!searchQuery.trim()) return contacts;
+    const recentByName = new Map(
+      channels
+        .filter((channel) => channel.channel_type === "direct")
+        .map((channel) => [channel.display_name.toLocaleLowerCase(), channel.last_message_at ? Date.parse(channel.last_message_at) : 0]),
+    );
+    const ordered = [...contacts].sort((a, b) =>
+      (recentByName.get(b.full_name.toLocaleLowerCase()) ?? 0) -
+      (recentByName.get(a.full_name.toLocaleLowerCase()) ?? 0),
+    );
+    if (!searchQuery.trim()) return ordered;
     const q = searchQuery.toLowerCase();
-    return contacts.filter(
+    return ordered.filter(
       (c) =>
         c.full_name.toLowerCase().includes(q) ||
         c.role_title.toLowerCase().includes(q)
     );
-  }, [contacts, searchQuery]);
+  }, [contacts, channels, searchQuery]);
 
   const filteredChannels = useMemo(() => {
-    if (!searchQuery.trim()) return channels;
+    const ordered = [...channels].sort((a, b) =>
+      (a.last_message_at ? Date.parse(a.last_message_at) : Date.parse(a.updated_at)) -
+      (b.last_message_at ? Date.parse(b.last_message_at) : Date.parse(b.updated_at)),
+    ).reverse();
+    if (!searchQuery.trim()) return ordered;
     const q = searchQuery.toLowerCase();
-    return channels.filter((c) =>
+    return ordered.filter((c) =>
       c.display_name.toLowerCase().includes(q)
     );
   }, [channels, searchQuery]);
@@ -612,6 +650,7 @@ export function ChatPanel({
     } finally {
       setIsSending(false);
       setIsCopilotThinking(false);
+      requestAnimationFrame(() => textareaRef.current?.focus());
     }
   }
 
@@ -656,8 +695,17 @@ export function ChatPanel({
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
+      if (showCopilotSuggestion) {
+        setDraft("@copilot ");
+        return;
+      }
       void handleSendMessage();
     }
+  }
+
+  function completeCopilotMention() {
+    setDraft("@copilot ");
+    requestAnimationFrame(() => textareaRef.current?.focus());
   }
 
   return (
@@ -993,8 +1041,11 @@ export function ChatPanel({
                         {message.status === "pending" && (
                           <Clock aria-hidden="true" />
                         )}
-                        {message.status === "sent" && (
-                          <CheckCheck aria-hidden="true" />
+                        {message.status === "sent" && message.read_count > 1 && (
+                          <CheckCheck className={styles.readReceipt} aria-hidden="true" />
+                        )}
+                        {message.status === "sent" && message.read_count <= 1 && (
+                          <Check aria-hidden="true" />
                         )}
                         {message.status === "failed" && (
                           <AlertCircle
@@ -1041,9 +1092,20 @@ export function ChatPanel({
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={!activeChannelId || isSending}
+              disabled={!activeChannelId}
               rows={1}
             />
+            {showCopilotSuggestion && activeChannelId && (
+              <button
+                type="button"
+                className={styles.mentionSuggestion}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={completeCopilotMention}
+              >
+                <Sparkles aria-hidden="true" />
+                <span><strong>@copilot</strong><small>{t("chat.copilotHint")}</small></span>
+              </button>
+            )}
             <button
               type="submit"
               className={styles.sendButton}
@@ -1144,7 +1206,11 @@ export function ChatPanel({
           <div className={styles.membersModal} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label={t("chat.groupMembersTitle")}>
             <div className={styles.modalHeader}>
               <div><h3>{t("chat.groupMembersTitle")}</h3><p>{t("chat.activeResearchers", { count: channelMembers.length })}</p></div>
+              <div className={styles.memberModalActions}>
+                <button type="button" className={styles.inlineSave} onClick={() => setShowAddMembersModal(true)}><UserPlus aria-hidden="true" />{t("chat.addMembers")}</button>
+                <button type="button" className={styles.inlineCancel} onClick={() => void leaveActiveGroup()}>{t("chat.leaveGroup")}</button>
               <button type="button" className={styles.closeButton} onClick={() => setShowMembersModal(false)}><X aria-hidden="true" /></button>
+              </div>
             </div>
             <div className={styles.groupMembersList}>
               {channelMembers.map((member) => (
@@ -1155,6 +1221,23 @@ export function ChatPanel({
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {showAddMembersModal && activeChannelId && (
+        <div className={styles.modalOverlay} onClick={() => setShowAddMembersModal(false)}>
+          <div className={styles.createGroupCard} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
+            <div className={styles.modalHeader}><h3>{t("chat.addMembers")}</h3><button type="button" className={styles.closeButton} onClick={() => setShowAddMembersModal(false)}><X aria-hidden="true" /></button></div>
+            <div className={styles.memberSelectorList}>
+              {contacts.filter((contact) => !channelMembers.some((member) => member.researcher_id === contact.researcher_id)).map((contact) => {
+                const selected = selectedAdditionalMemberIds.includes(contact.researcher_id);
+                return <button type="button" key={contact.researcher_id} className={`${styles.memberSelectItem} ${selected ? styles.selected : ""}`} onClick={() => setSelectedAdditionalMemberIds((ids) => selected ? ids.filter((id) => id !== contact.researcher_id) : [...ids, contact.researcher_id])}>
+                  <AnimalAvatar avatarKey={contact.animal_avatar_key} seed={contact.researcher_id} /><span className={styles.memberSelectInfo}><span className={styles.memberSelectName}>{contact.full_name}</span><span className={styles.memberSelectRole}>{contact.role_title}</span></span>{selected && <Check aria-hidden="true" />}
+                </button>;
+              })}
+            </div>
+            <div className={styles.modalActions}><button type="button" className={styles.cancelBtn} onClick={() => setShowAddMembersModal(false)}>{t("common.cancel")}</button><button type="button" className={styles.createBtn} disabled={!selectedAdditionalMemberIds.length} onClick={() => void addMembers()}>{t("chat.addMembers")}</button></div>
           </div>
         </div>
       )}

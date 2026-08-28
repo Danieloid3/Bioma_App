@@ -397,8 +397,15 @@ class PostgresChatRepository:
             accreditation_level=row["accreditation_level"], avatar_key=row["avatar_key"],
         ) for row in rows]
 
+    async def add_members(self, channel_id: UUID, member_ids: list[UUID]) -> None:
+        await self._connection.execute(
+            "SELECT bio_fn_add_chat_members($1, $2::uuid[])", channel_id, member_ids
+        )
+
+    async def leave(self, channel_id: UUID) -> None:
+        await self._connection.execute("SELECT bio_fn_leave_chat_channel($1)", channel_id)
+
     async def history(self, channel_id: UUID, cursor_created_at: datetime | None, cursor_message_id: UUID | None, limit: int) -> list[ChatMessageItem]:
-        await self._connection.execute("SELECT bio_fn_mark_chat_channel_read($1)", channel_id)
         rows = await self._connection.fetch(
             "SELECT * FROM bio_fn_chat_history($1, $2, $3, $4)", channel_id, cursor_created_at, cursor_message_id, limit
         )
@@ -447,6 +454,22 @@ class PostgresChatRepository:
             ) for row in rows
 
         ]
+
+    async def mark_channel_read(self, channel_id: UUID) -> int:
+        pending = await self._connection.fetchval(
+            """
+            SELECT count(*)
+            FROM bio_chat_message_receipts receipt
+            JOIN bio_chat_messages message ON message.bio_chat_message_id = receipt.bio_chat_message_id
+            WHERE receipt.bio_researcher_id = nullif(current_setting('app.current_user_id', true), '')::uuid
+              AND receipt.bio_read_at IS NULL
+              AND message.bio_chat_channel_id = $1
+              AND NOT message.bio_is_deleted
+            """,
+            channel_id,
+        )
+        await self._connection.execute("SELECT bio_fn_mark_chat_channel_read($1)", channel_id)
+        return int(pending or 0)
 
     async def send(self, channel_id: UUID, text: str) -> UUID:
         return await self._connection.fetchval("SELECT bio_fn_send_chat_message($1, $2)", channel_id, text)
